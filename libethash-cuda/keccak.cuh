@@ -71,7 +71,9 @@ DEV_INLINE void keccak_f1600_init(uint2* state)
     devectorize2(d_header.uint4s[0], s[0], s[1]);
     devectorize2(d_header.uint4s[1], s[2], s[3]);
     s[4] = state[4];
-    s[5] = make_uint2(1, 0);
+    // replace 0x01 with 0x06 to be standard SHA3
+    // s[5] = make_uint2(1, 0);
+    s[5] = make_uint2(6, 0);
     s[6] = u2zero;
     s[7] = u2zero;
     s[8] = make_uint2(0, 0x80000000);
@@ -391,7 +393,9 @@ DEV_INLINE uint64_t keccak_f1600_final(uint2* state)
     for (int i = 0; i < 12; ++i)
         s[i] = state[i];
 
-    s[12] = make_uint2(1, 0);
+    // replace 0x01 with 0x06 to be standard SHA3
+    // s[12] = make_uint2(1, 0);
+    s[12] = make_uint2(6, 0);
     s[13] = u2zero;
     s[14] = u2zero;
     s[15] = u2zero;
@@ -664,7 +668,10 @@ DEV_INLINE void SHA3_512(uint2* s)
     {
         s[i] = make_uint2(0, 0);
     }
-    s[8].x = 1;
+
+    // replace 0x01 with 0x06 to be standard SHA3
+    // s[8].x = 1;
+    s[8].x = 6;
     s[8].y = 0x80000000;
 
     for (int i = 0; i < 23; i++)

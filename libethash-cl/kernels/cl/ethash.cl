@@ -299,7 +299,9 @@ __kernel void search(
     state[2] = g_header[2];
     state[3] = g_header[3];
     state[4] = as_uint2(start_nonce + gid);
-    state[5] = as_uint2(0x0000000000000001UL);
+    // replace 0x01 with 0x06 to be standard SHA3
+    // state[5] = as_uint2(0x0000000000000001UL);
+    state[5] = as_uint2(0x0000000000000006UL);
     state[6] = (uint2)(0);
     state[7] = (uint2)(0);
     state[8] = as_uint2(0x8000000000000000UL);
@@ -380,7 +382,9 @@ __kernel void search(
         mixhash[2] = state[10];
         mixhash[3] = state[11];
 
-        state[12] = as_uint2(0x0000000000000001UL);
+        // replace 0x01 with 0x06 to be standard SHA3
+        // state[12] = as_uint2(0x0000000000000001UL);
+        state[12] = as_uint2(0x0000000000000006UL);
         state[13] = (uint2)(0);
         state[14] = (uint2)(0);
         state[15] = (uint2)(0);
@@ -430,7 +434,9 @@ static void SHA3_512(uint2 *s)
     for (uint i = 0; i < 8; ++i)
         st[i] = s[i];
 
-    st[8] = (uint2)(0x00000001, 0x80000000);
+    // replace 0x01 with 0x06 to be standard SHA3
+    // st[8] = (uint2)(0x00000001, 0x80000000);
+    st[8] = (uint2)(0x00000006, 0x80000000);
 
     for (uint i = 9; i != 25; ++i)
         st[i] = (uint2)(0);

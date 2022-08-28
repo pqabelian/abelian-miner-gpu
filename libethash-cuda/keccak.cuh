@@ -640,24 +640,58 @@ DEV_INLINE uint64_t keccak_f1600_final(uint2* state)
         s[0] ^= keccak_round_constants[i];
     }
 
+    //  output s[3], since in Abelian, the hash is byte-reversed and then compared with the target difficulty
+    /* theta: c = a[0,i] ^ a[1,i] ^ .. a[4,i] */
     t[0] = xor5(s[0], s[5], s[10], s[15], s[20]);
     t[1] = xor5(s[1], s[6], s[11], s[16], s[21]);
     t[2] = xor5(s[2], s[7], s[12], s[17], s[22]);
     t[3] = xor5(s[3], s[8], s[13], s[18], s[23]);
     t[4] = xor5(s[4], s[9], s[14], s[19], s[24]);
 
+
+    // u = t[4] ^ ROL2(t[1], 1);
+    // s[0] ^= u;
     s[0] = xor3(s[0], t[4], ROL2(t[1], 1));
-    s[6] = xor3(s[6], t[0], ROL2(t[2], 1));
-    s[12] = xor3(s[12], t[1], ROL2(t[3], 1));
 
-    s[1] = ROL2(s[6], 44);
-    s[2] = ROL2(s[12], 43);
+    // u = t[2] ^ ROL2(t[4], 1);
+    // s[18] ^= u;
+    s[18] = xor3(s[18], t[2], ROL2(t[4], 1));
 
-    s[0] = chi(s[0], s[1], s[2]);
+    // u = t[3] ^ ROL2(t[0], 1);
+    // s[24] ^= u;
+    s[24] = xor3(s[24], t[3], ROL2(t[0], 1));
 
-    /* iota: a[0,0] ^= round constant */
-    // s[0] ^= vectorize(keccak_round_constants[23]);
-    return devectorize(s[0] ^ keccak_round_constants[23]);
+
+    s[4] = ROL2(s[24], 14);
+    s[3] = ROL2(s[18], 21);
+
+    /* chi: a[i,j] ^= ~b[i,j+1] & b[i,j+2] */
+    // u = s[0];
+    // s[3] = chi(s[3], s[4], u);
+    s[3] = chi(s[3], s[4], s[0]);
+
+    return devectorize(s[3]);
+
+
+    //    //    In original Ethash, the hash is directly transformed to bigint and compare with the target boundary.
+    //    t[0] = xor5(s[0], s[5], s[10], s[15], s[20]);
+    //    t[1] = xor5(s[1], s[6], s[11], s[16], s[21]);
+    //    t[2] = xor5(s[2], s[7], s[12], s[17], s[22]);
+    //    t[3] = xor5(s[3], s[8], s[13], s[18], s[23]);
+    //    t[4] = xor5(s[4], s[9], s[14], s[19], s[24]);
+    //
+    //    s[0] = xor3(s[0], t[4], ROL2(t[1], 1));
+    //    s[6] = xor3(s[6], t[0], ROL2(t[2], 1));
+    //    s[12] = xor3(s[12], t[1], ROL2(t[3], 1));
+    //
+    //    s[1] = ROL2(s[6], 44);
+    //    s[2] = ROL2(s[12], 43);
+    //
+    //    s[0] = chi(s[0], s[1], s[2]);
+    //
+    //    /* iota: a[0,0] ^= round constant */
+    //    // s[0] ^= vectorize(keccak_round_constants[23]);
+    //    return devectorize(s[0] ^ keccak_round_constants[23]);
 }
 
 DEV_INLINE void SHA3_512(uint2* s)

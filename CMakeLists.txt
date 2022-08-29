@@ -67,8 +67,10 @@ find_package(Boost CONFIG REQUIRED COMPONENTS system filesystem thread)
 hunter_add_package(jsoncpp)
 find_package(jsoncpp CONFIG REQUIRED)
 
-hunter_add_package(ethash)
-find_package(ethash CONFIG REQUIRED)
+#hunter_add_package(ethash)
+#find_package(ethash CONFIG REQUIRED)
+hunter_add_package(abelethash)
+find_package(abelethash CONFIG REQUIRED)
 
 configureProject()
 

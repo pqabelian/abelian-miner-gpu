@@ -5,3 +5,6 @@
 	path = cmake/cable
 	url = https://github.com/ethereum/cable
 	branch = master
+[submodule "thirdparty/abelethash"]
+	path = thirdparty/abelethash
+	url = git@github.com:alicebobscorpio/abelethash.git

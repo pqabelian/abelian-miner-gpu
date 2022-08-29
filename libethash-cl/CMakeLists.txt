@@ -32,6 +32,6 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(..)
 
 add_library(ethash-cl ${SOURCES})
-target_link_libraries(ethash-cl PUBLIC ethcore ethash::ethash)
+target_link_libraries(ethash-cl PUBLIC ethcore abelethash::ethash)
 target_link_libraries(ethash-cl PRIVATE OpenCL::OpenCL)
 target_link_libraries(ethash-cl PRIVATE Boost::filesystem Boost::thread)

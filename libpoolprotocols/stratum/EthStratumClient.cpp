@@ -373,7 +373,22 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
     }
 
     // No msg from client (EthereumStratum/2.0.0)
+    //  todo: AbelianStratum
     if (m_conn->StratumMode() == 3 && m_session)
+    {
+        auto s = duration_cast<seconds>(steady_clock::now() - m_session->lastTxStamp).count();
+        if (s > ((int)m_session->timeout - 5))
+        {
+            // Send a message 5 seconds before expiration
+            Json::Value jReq;
+            jReq["id"] = unsigned(7);
+            jReq["method"] = "mining.noop";
+            send(jReq);
+        }
+    }
+
+    //  todo: AbelianStratum: using the protocol based on EthereumStratum/2.0.0
+    if (m_conn->StratumMode() == EthStratumClient::ABELIANSTRATUM && m_session)
     {
         auto s = duration_cast<seconds>(steady_clock::now() - m_session->lastTxStamp).count();
         if (s > ((int)m_session->timeout - 5))
@@ -580,6 +595,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
 
     Otherwise let's go through an autodetection.
 
+     // todo: AbelianStratum
     Autodetection process passes all known stratum modes.
     - 1st pass EthStratumClient::ETHEREUMSTRATUM2 (3)
     - 2nd pass EthStratumClient::ETHEREUMSTRATUM  (2)
@@ -593,8 +609,11 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     }
     else
     {
+        //  todo: AbelianStratum: why 999?
+//        if (!m_conn->StratumModeConfirmed() && m_conn->StratumMode() == 999)
+//            m_conn->SetStratumMode(3, false);
         if (!m_conn->StratumModeConfirmed() && m_conn->StratumMode() == 999)
-            m_conn->SetStratumMode(3, false);
+            m_conn->SetStratumMode(EthStratumClient::ABELIANSTRATUM, false);
     }
 
 
@@ -606,6 +625,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
 
     switch (m_conn->StratumMode())
     {
+        //  todo: AbelianStratum
     case EthStratumClient::STRATUM:
 
         jReq["jsonrpc"] = "2.0";
@@ -638,6 +658,19 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
         jPrm["host"] = m_conn->Host();
         jPrm["port"] = toCompactHex((uint32_t)m_conn->Port(), HexPrefix::DontAdd);
         jPrm["proto"] = "EthereumStratum/2.0.0";
+        jReq["params"] = jPrm;
+
+        break;
+
+    //  todo: AbelianStratum
+    case EthStratumClient::ABELIANSTRATUM:
+
+        jReq["method"] = "mining.hello";
+        Json::Value jPrm;
+        jPrm["agent"] = ethminer_get_buildinfo()->project_name_with_version;
+        jPrm["host"] = m_conn->Host();
+        jPrm["port"] = toCompactHex((uint32_t)m_conn->Port(), HexPrefix::DontAdd);
+        jPrm["proto"] = "AbelianStratum/2.0.0";
         jReq["params"] = jPrm;
 
         break;
@@ -710,6 +743,8 @@ std::string EthStratumClient::processError(Json::Value& responseObject)
     return retVar;
 }
 
+// todo: AbelianStaratum: shall have/use this function? It seems that this is for ETHEREUMSTRATUM2
+//  todo: this should be refactored to processStartNonce, as extraNonce means the nonce in coinbase transaction.
 void EthStratumClient::processExtranonce(std::string& enonce)
 {
     m_session->extraNonceSizeBytes = enonce.length();
@@ -741,6 +776,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
     _isNotification = (_method != "" || _id == unsigned(0));
 
     // Notifications of new jobs are like responses to get_work requests
+    //  todo: AbelianStratum: EthStratumClient::ETHPROXY works with getWork
     if (_isNotification && _method == "" && m_conn->StratumMode() == EthStratumClient::ETHPROXY &&
         responseObject["result"].isArray())
     {
@@ -794,6 +830,11 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 // Disconnect and Proceed with next step of autodetection
                 switch (m_conn->StratumMode())
                 {
+                    // todo: AbelianStratum
+                case ABELIANSTRATUM:
+                    cnote << "Negotiation of AbelianStratum/2.0.0 failed. Trying another ...";
+                    break;
+
                 case ETHEREUMSTRATUM2:
                     cnote << "Negotiation of EthereumStratum/2.0.0 failed. Trying another ...";
                     break;
@@ -816,6 +857,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 return;
             }
 
+            //  todo: AbelianStratum
             /*
             Process response for each stratum flavour :
             ETHEREUMSTRATUM2 response to mining.hello
@@ -826,6 +868,50 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
             switch (m_conn->StratumMode())
             {
+            //  todo: AbelianStratum
+            case EthStratumClient::ABELIANSTRATUM:
+
+                _isSuccess = (jResult.isConvertibleTo(Json::ValueType::objectValue) &&
+                              jResult.isMember("proto") &&
+                              jResult["proto"].asString() == "AbelianStratum/2.0.0" &&
+                              jResult.isMember("encoding") && jResult.isMember("resume") &&
+                              jResult.isMember("timeout") && jResult.isMember("maxerrors") &&
+                              jResult.isMember("node"));
+
+                if (_isSuccess)
+                {
+                    // Selected flavour is confirmed
+                    m_conn->SetStratumMode(EthStratumClient::ABELIANSTRATUM, true);
+                    cnote << "Stratum mode : AbelianStratum/2.0.0";
+                    startSession();
+
+                    // Send request for subscription
+                    jReq["id"] = unsigned(2);
+                    jReq["method"] = "mining.subscribe";
+                    enqueue_response_plea();
+                }
+                else
+                {
+                    // If no autodetection the connection is not usable
+                    // with this stratum flavor
+                    if (m_conn->StratumModeConfirmed())
+                    {
+                        m_conn->MarkUnrecoverable();
+                        cnote << "Negotiation of AbelianStratum/2.0.0 failed. Change your "
+                                 "connection parameters";
+                    }
+                    else
+                    {
+                        cnote << "Negotiation of AbelianStratum/2.0.0 failed. Trying another ...";
+                    }
+                    // Disconnect
+                    m_io_service.post(
+                        m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
+                    return;
+                }
+
+                break;
+
             case EthStratumClient::ETHEREUMSTRATUM2:
 
                 _isSuccess = (jResult.isConvertibleTo(Json::ValueType::objectValue) &&
@@ -1058,6 +1144,58 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 enqueue_response_plea();
                 send(jReq);
             }
+
+            //  todo: AbelianStratum
+            if (m_conn->StratumMode() == ABELIANSTRATUM)
+            {
+                response_delay_ms = dequeue_response_plea();
+
+                if (!jResult.isString() || !jResult.asString().size())
+                {
+                    // Got invalid session id which is mandatory
+                    cwarn << "Got invalid or missing session id. Disconnecting ... ";
+                    m_conn->MarkUnrecoverable();
+                    m_io_service.post(
+                        m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
+                    return;
+                }
+
+                m_session->sessionId = jResult.asString();
+                m_session->subscribed.store(true, memory_order_relaxed);
+
+                // Request authorization
+                m_authpending.store(true, std::memory_order_relaxed);
+                jReq["id"] = unsigned(3);
+                jReq["method"] = "mining.authorize";
+                jReq["params"] = Json::Value(Json::arrayValue);
+                jReq["params"].append(m_conn->UserDotWorker() + m_conn->Path());
+                jReq["params"].append(m_conn->Pass());
+                enqueue_response_plea();
+                send(jReq);
+            }
+        }
+
+        //  todo: AbelianStratum
+        else if (_id == 3 && m_conn->StratumMode() == ABELIANSTRATUM)
+        {
+            response_delay_ms = dequeue_response_plea();
+
+            if (!_isSuccess || (!jResult.isString() || !jResult.asString().size()))
+            {
+                // Got invalid session id which is mandatory
+                cnote << "Worker " << EthWhite << m_conn->UserDotWorker() << EthReset
+                      << " not authorized : " << _errReason;
+                m_conn->MarkUnrecoverable();
+                m_io_service.post(
+                    m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
+                return;
+            }
+            m_authpending.store(false, memory_order_relaxed);
+            m_session->authorized.store(true, memory_order_relaxed);
+            m_session->workerId = jResult.asString();
+            cnote << "Authorized worker " << m_conn->UserDotWorker();
+
+            // Nothing else to here. Wait for notifications from pool
         }
 
         else if (_id == 3 && m_conn->StratumMode() != ETHEREUMSTRATUM2)
@@ -1110,6 +1248,42 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             cnote << "Authorized worker " << m_conn->UserDotWorker();
 
             // Nothing else to here. Wait for notifications from pool
+        }
+
+        //  todo: AbelianStratum
+        else if ((_id >= 40 && _id <= m_solution_submitted_max_id) &&
+                 m_conn->StratumMode() == ABELIANSTRATUM)
+        {
+            response_delay_ms = dequeue_response_plea();
+
+            // In AbelianStratum/2.0.0 we can evaluate the severity of the
+            // error. An 2xx error means the solution have been accepted but is
+            // likely stale
+            bool isStale = false;
+            if (!_isSuccess)
+            {
+                string errCode = responseObject["error"].get("code","").asString();
+                if (errCode.substr(0, 1) == "2")
+                    _isSuccess = isStale = true;
+            }
+
+
+            const unsigned miner_index = _id - 40;
+            if (_isSuccess)
+            {
+                if (m_onSolutionAccepted)
+                    m_onSolutionAccepted(response_delay_ms, miner_index, isStale);
+            }
+            else
+            {
+
+                if (m_onSolutionRejected)
+                {
+                    cwarn << "Reject reason : "
+                          << (_errReason.empty() ? "Unspecified" : _errReason);
+                    m_onSolutionRejected(response_delay_ms, miner_index);
+                }
+            }
         }
 
         else if ((_id >= 40 && _id <= m_solution_submitted_max_id) &&
@@ -1214,6 +1388,11 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 // Disconnect and Proceed with next step of autodetection
                 switch (m_conn->StratumMode())
                 {
+                    // todo: AbelianStratum
+                case ABELIANSTRATUM:
+                    cnote << "Negotiation of AbelianStratum/2.0.0 failed. Trying another ...";
+                    break;
+
                 case ETHEREUMSTRATUM2:
                     cnote << "Negotiation of EthereumStratum/2.0.0 failed. Trying another ...";
                     break;
@@ -1284,7 +1463,106 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
         unsigned prmIdx;
 
-        if (_method == "mining.notify" && m_conn->StratumMode() != ETHEREUMSTRATUM2)
+        // todo: AbelianStratum
+        if (_method == "mining.notify" && m_conn->StratumMode() == ABELIANSTRATUM)
+        {
+            /*
+            {
+              "method": "mining.notify",
+              "params": [
+                  "bf0488aa",
+                  "6526d5"
+                  "645cf20198c2f3861e947d4f67e3ab63b7b2e24dcc9095bd9123e7b33371f6cc",
+                  "0"
+              ]
+            }
+            */
+            if (!m_session || !m_session->firstMiningSet)
+            {
+                cwarn << "Got mining.notify before mining.set message. Discarding ...";
+                return;
+            }
+
+            if (!responseObject.isMember("params") || !responseObject["params"].isArray() ||
+                responseObject["params"].empty() || responseObject["params"].size() != 4)
+            {
+                cwarn << "Got invalid mining.notify message. Discarding ...";
+                return;
+            }
+
+            jPrm = responseObject["params"];
+            m_current.job = jPrm.get(Json::Value::ArrayIndex(0), "").asString();
+            m_current.block =
+                stoul(jPrm.get(Json::Value::ArrayIndex(1), "").asString(), nullptr, 16);
+
+            string header =
+                "0x" + dev::padLeft(jPrm.get(Json::Value::ArrayIndex(2), "").asString(), 64, '0');
+
+            m_current.header = h256(header);
+            //  todo: In AbelianStratum, boundary is used to set the targetDifficulty/hash
+            m_current.boundary = h256(m_session->nextWorkBoundary.hex(HexPrefix::Add));
+            m_current.epoch = m_session->epoch;
+            m_current.algo = m_session->algo;
+            //  todo: In AbelianStratum, extraNonce and exSizeBytes will be refactored to startNonce and startNonceBitsNum
+            m_current.startNonce = m_session->extraNonce;
+            m_current.exSizeBytes = m_session->extraNonceSizeBytes;
+            m_current_timestamp = std::chrono::steady_clock::now();
+
+            // This will signal to dispatch the job
+            // at the end of the transmission.
+            m_newjobprocessed = true;
+        }
+        else if (_method == "mining.set" && m_conn->StratumMode() == ABELIANSTRATUM)
+        {
+            /*
+            {
+              "method": "mining.set",
+              "params": {
+                  "epoch" : "dc",
+                  "target" : "0112e0be826d694b2e62d01511f12a6061fbaec8bc02357593e70e52ba",
+                  "algo" : "ethash",
+                  "extranonce" : "af4c"
+              }
+            }
+            */
+            if (!responseObject.isMember("params") || !responseObject["params"].isObject() ||
+                responseObject["params"].empty())
+            {
+                cwarn << "Got invalid mining.set message. Discarding ...";
+                return;
+            }
+            m_session->firstMiningSet = true;
+            jPrm = responseObject["params"];
+            string timeout = jPrm.get("timeout", "").asString();
+            string epoch = jPrm.get("epoch", "").asString();
+            string target = jPrm.get("target", "").asString();
+
+            if (!timeout.empty())
+                m_session->timeout = stoi(timeout, nullptr, 16);
+
+            if (!epoch.empty())
+                m_session->epoch = stoul(epoch, nullptr, 16);
+
+            if (!target.empty())
+            {
+                target = "0x" + dev::padLeft(target, 64, '0');
+                m_session->nextWorkBoundary = h256(target);
+            }
+
+            //  todo: AbelianStratum, extranonce should be refactored to startNonce. ethash to abelethash?
+            m_session->algo = jPrm.get("algo", "ethash").asString();
+            string enonce = jPrm.get("extranonce", "").asString();
+            if (!enonce.empty())
+                processExtranonce(enonce);
+        }
+        else if (_method == "mining.bye" && m_conn->StratumMode() == ABELIANSTRATUM)
+        {
+            cnote << m_conn->Host() << " requested connection close. Disconnecting ...";
+            m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
+        }
+
+        //if (_method == "mining.notify" && m_conn->StratumMode() != ETHEREUMSTRATUM2)
+        else if (_method == "mining.notify" && m_conn->StratumMode() != ETHEREUMSTRATUM2)
         {
             // Discard jobs if not properly subscribed
             // or if a job for this transmission has already
@@ -1554,7 +1832,26 @@ void EthStratumClient::submitHashrate(uint64_t const& rate, string const& id)
     jReq["id"] = unsigned(9);
     jReq["params"] = Json::Value(Json::arrayValue);
 
-    if (m_conn->StratumMode() != 3)
+    // todo: AbelianStratum
+    if (m_conn->StratumMode() == ABELIANSTRATUM)
+    {
+        /*
+        {
+          "id" : 9,
+          "method": "mining.hashrate",
+          "params": [
+              "500000",
+              "w-123"
+              ]
+        }
+        */
+
+        jReq["method"] = "mining.hashrate";
+        jReq["params"].append(toCompactHex(rate, HexPrefix::DontAdd));
+        jReq["params"].append(m_session->workerId);
+    }
+    //if (m_conn->StratumMode() != 3)
+    else if (m_conn->StratumMode() != 3)
     {
         // There is no stratum method to submit the hashrate so we use the rpc variant.
         // Note !!
@@ -1645,7 +1942,17 @@ void EthStratumClient::submitSolution(const Solution& solution)
         jReq["params"].append(
             toHex(solution.nonce, HexPrefix::DontAdd).substr(solution.work.exSizeBytes));
         jReq["params"].append(m_session->workerId);
-        break;        
+        break;
+
+    //  todo: AbelianStratum
+    case EthStratumClient::ABELIANSTRATUM:
+
+        jReq["params"].append(solution.work.job);
+        jReq["params"].append(
+            toHex(solution.nonce, HexPrefix::DontAdd).substr(solution.work.exSizeBytes));
+        jReq["params"].append(m_session->workerId);
+        break;
+
     }
 
     enqueue_response_plea();
@@ -1859,6 +2166,10 @@ void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code
         // Register last transmission tstamp to prevent timeout
         // in EthereumStratum/2.0.0
         if (m_session && m_conn->StratumMode() == 3)
+            m_session->lastTxStamp = chrono::steady_clock::now();
+
+        //  todo: AbelianStratum
+        if (m_session && m_conn->StratumMode() == ABELIANSTRATUM)
             m_session->lastTxStamp = chrono::steady_clock::now();
 
         if (m_txQueue.empty())

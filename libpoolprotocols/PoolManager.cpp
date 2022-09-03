@@ -159,6 +159,8 @@ void PoolManager::setClientHandlers()
         if (!wp)
             return;
 
+        //  todo: AbelianStratum: Why newEpoch is determined by _currentEpoch == -1 ?
+        //  todo: _currentEpoch == -1 implies new epoch, _currentEpoch != -1, then it is determined by following rules.
         int _currentEpoch = m_currentWp.epoch;
         bool newEpoch = (_currentEpoch == -1);
 
@@ -183,6 +185,7 @@ void PoolManager::setClientHandlers()
             if (wp.epoch == -1)
             {
                 if (m_currentWp.block >= 0)
+                    //  todo: AbelianStratum
                     m_currentWp.epoch = m_currentWp.block / 30000;
                 else
                     m_currentWp.epoch = ethash::find_epoch_number(

@@ -226,6 +226,8 @@ void Farm::setWork(WorkPackage const& _newWp)
     if (m_Settings.ergodicity == 2 && m_currentWp.exSizeBytes == 0)
         shuffle();
 
+    //  todo: AbelianStratum will require that startNonceBitsNum is not zero, and make sure each job has a unique (contentHash, startNonce).
+    //  todo: can use (contentHash, startNonce) as the job name/index.
     uint64_t _startNonce;
     if (m_currentWp.exSizeBytes > 0)
     {

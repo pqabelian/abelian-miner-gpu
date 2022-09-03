@@ -56,7 +56,9 @@ public:
         STRATUM = 0,
         ETHPROXY,
         ETHEREUMSTRATUM,
-        ETHEREUMSTRATUM2
+        ETHEREUMSTRATUM2,
+        //  todo: AbelianStratum
+        ABELIANSTRATUM
     };
 
     EthStratumClient(int worktimeout, int responsetimeout);

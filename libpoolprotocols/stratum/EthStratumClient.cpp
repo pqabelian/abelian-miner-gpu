@@ -650,17 +650,17 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
 
         break;
 
-    case EthStratumClient::ETHEREUMSTRATUM2:
-
-        jReq["method"] = "mining.hello";
-        Json::Value jPrm;
-        jPrm["agent"] = ethminer_get_buildinfo()->project_name_with_version;
-        jPrm["host"] = m_conn->Host();
-        jPrm["port"] = toCompactHex((uint32_t)m_conn->Port(), HexPrefix::DontAdd);
-        jPrm["proto"] = "EthereumStratum/2.0.0";
-        jReq["params"] = jPrm;
-
-        break;
+//    case EthStratumClient::ETHEREUMSTRATUM2:
+//
+//        jReq["method"] = "mining.hello";
+//        Json::Value jPrm;
+//        jPrm["agent"] = ethminer_get_buildinfo()->project_name_with_version;
+//        jPrm["host"] = m_conn->Host();
+//        jPrm["port"] = toCompactHex((uint32_t)m_conn->Port(), HexPrefix::DontAdd);
+//        jPrm["proto"] = "EthereumStratum/2.0.0";
+//        jReq["params"] = jPrm;
+//
+//        break;
 
     //  todo: AbelianStratum
     case EthStratumClient::ABELIANSTRATUM:

@@ -56,8 +56,8 @@ public:
         STRATUM = 0,
         ETHPROXY,
         ETHEREUMSTRATUM,
-        ETHEREUMSTRATUM2,
         //  todo: AbelianStratum
+        //ETHEREUMSTRATUM2,
         ABELIANSTRATUM
     };
 

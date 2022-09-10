@@ -1924,13 +1924,13 @@ void EthStratumClient::submitSolution(const Solution& solution)
             toHex(solution.nonce, HexPrefix::DontAdd).substr(solution.work.exSizeBytes));
         break;
         
-    case EthStratumClient::ETHEREUMSTRATUM2:
-
-        jReq["params"].append(solution.work.job);
-        jReq["params"].append(
-            toHex(solution.nonce, HexPrefix::DontAdd).substr(solution.work.exSizeBytes));
-        jReq["params"].append(m_session->workerId);
-        break;
+//    case EthStratumClient::ETHEREUMSTRATUM2:
+//
+//        jReq["params"].append(solution.work.job);
+//        jReq["params"].append(
+//            toHex(solution.nonce, HexPrefix::DontAdd).substr(solution.work.exSizeBytes));
+//        jReq["params"].append(m_session->workerId);
+//        break;
 
     //  todo: AbelianStratum
     case EthStratumClient::ABELIANSTRATUM:

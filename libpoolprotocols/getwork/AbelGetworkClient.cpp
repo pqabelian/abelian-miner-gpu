@@ -15,6 +15,7 @@ AbelGetworkClient::AbelGetworkClient(int worktimeout, unsigned farmRecheckPeriod
     m_farmRecheckPeriod(farmRecheckPeriod),
     m_io_strand(g_io_service),
     m_socket(g_io_service),
+    m_txQueue(64),
     m_resolver(g_io_service),
     m_endpoints(),
     m_getwork_timer(g_io_service),

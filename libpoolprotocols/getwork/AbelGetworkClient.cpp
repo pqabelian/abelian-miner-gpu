@@ -1,4 +1,4 @@
-#include "EthGetworkClient.h"
+#include "AbelGetworkClient.h"
 
 #include <chrono>
 
@@ -10,7 +10,7 @@ using namespace eth;
 
 using boost::asio::ip::tcp;
 
-EthGetworkClient::EthGetworkClient(int worktimeout, unsigned farmRecheckPeriod)
+AbelGetworkClient::AbelGetworkClient(int worktimeout, unsigned farmRecheckPeriod)
   : PoolClient(),
     m_farmRecheckPeriod(farmRecheckPeriod),
     m_io_strand(g_io_service),
@@ -25,18 +25,18 @@ EthGetworkClient::EthGetworkClient(int worktimeout, unsigned farmRecheckPeriod)
     Json::Value jGetWork;
     jGetWork["id"] = unsigned(1);
     jGetWork["jsonrpc"] = "2.0";
-    jGetWork["method"] = "eth_getWork";
+    jGetWork["method"] = "getwork";
     jGetWork["params"] = Json::Value(Json::arrayValue);
     m_jsonGetWork = std::string(Json::writeString(m_jSwBuilder, jGetWork));
 }
 
-EthGetworkClient::~EthGetworkClient()
+AbelGetworkClient::~AbelGetworkClient()
 {
     // Do not stop io service.
     // It's global
 }
 
-void EthGetworkClient::connect()
+void AbelGetworkClient::connect()
 {
     // Prevent unnecessary and potentially dangerous recursion
     bool expected = false;
@@ -61,7 +61,7 @@ void EthGetworkClient::connect()
 
         // Start resolving async
         m_resolver.async_resolve(
-            q, m_io_strand.wrap(boost::bind(&EthGetworkClient::handle_resolve, this,
+            q, m_io_strand.wrap(boost::bind(&AbelGetworkClient::handle_resolve, this,
                    boost::asio::placeholders::error, boost::asio::placeholders::iterator)));
     }
     else
@@ -73,7 +73,7 @@ void EthGetworkClient::connect()
     }
 }
 
-void EthGetworkClient::disconnect()
+void AbelGetworkClient::disconnect()
 {
     // Release session
     m_connected.store(false, memory_order_relaxed);
@@ -95,7 +95,7 @@ void EthGetworkClient::disconnect()
         m_onDisconnected();
 }
 
-void EthGetworkClient::begin_connect()
+void AbelGetworkClient::begin_connect()
 {
     if (!m_endpoints.empty())
     {
@@ -103,7 +103,7 @@ void EthGetworkClient::begin_connect()
         // Eventually endpoints get discarded on connection errors
         m_endpoint = m_endpoints.front();
         m_socket.async_connect(
-            m_endpoint, m_io_strand.wrap(boost::bind(&EthGetworkClient::handle_connect, this, _1)));
+            m_endpoint, m_io_strand.wrap(boost::bind(&AbelGetworkClient::handle_connect, this, _1)));
     }
     else
     {
@@ -112,7 +112,7 @@ void EthGetworkClient::begin_connect()
     }
 }
 
-void EthGetworkClient::handle_connect(const boost::system::error_code& ec)
+void AbelGetworkClient::handle_connect(const boost::system::error_code& ec)
 {
     if (!ec && m_socket.is_open())
     {
@@ -162,14 +162,14 @@ void EthGetworkClient::handle_connect(const boost::system::error_code& ec)
                     // The payload
                     os << *line;
 
-                    // Out received message only for debug purpouses
+                    // Out received message only for debug purposes
                     if (g_logOptions & LOG_JSON)
                         cnote << " >> " << *line;
 
                     delete line;
 
                     async_write(m_socket, m_request,
-                        m_io_strand.wrap(boost::bind(&EthGetworkClient::handle_write, this,
+                        m_io_strand.wrap(boost::bind(&AbelGetworkClient::handle_write, this,
                             boost::asio::placeholders::error)));
                     break;
                 }
@@ -196,14 +196,14 @@ void EthGetworkClient::handle_connect(const boost::system::error_code& ec)
     }
 }
 
-void EthGetworkClient::handle_write(const boost::system::error_code& ec)
+void AbelGetworkClient::handle_write(const boost::system::error_code& ec)
 {
     if (!ec)
     {
         // Transmission succesfully sent.
         // Read the response async.
         async_read(m_socket, m_response, boost::asio::transfer_all(),
-            m_io_strand.wrap(boost::bind(&EthGetworkClient::handle_read, this,
+            m_io_strand.wrap(boost::bind(&AbelGetworkClient::handle_read, this,
                 boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred)));
     }
     else
@@ -218,7 +218,7 @@ void EthGetworkClient::handle_write(const boost::system::error_code& ec)
     }
 }
 
-void EthGetworkClient::handle_read(
+void AbelGetworkClient::handle_read(
     const boost::system::error_code& ec, std::size_t bytes_transferred)
 {
     if (!ec || ec == boost::asio::error::eof)
@@ -348,7 +348,7 @@ void EthGetworkClient::handle_read(
     }
 }
 
-void EthGetworkClient::handle_resolve(
+void AbelGetworkClient::handle_resolve(
     const boost::system::error_code& ec, tcp::resolver::iterator i)
 {
     if (!ec)
@@ -370,7 +370,7 @@ void EthGetworkClient::handle_resolve(
     }
 }
 
-void EthGetworkClient::processResponse(Json::Value& JRes)
+void AbelGetworkClient::processResponse(Json::Value& JRes)
 {
     unsigned _id = 0;  // This SHOULD be the same id as the request it is responding to
     bool _isSuccess = false;  // Whether or not this is a succesful or failed response
@@ -407,7 +407,7 @@ void EthGetworkClient::processResponse(Json::Value& JRes)
                   << toString(m_conn->Port());
             m_getwork_timer.expires_from_now(boost::posix_time::seconds(30));
             m_getwork_timer.async_wait(
-                m_io_strand.wrap(boost::bind(&EthGetworkClient::getwork_timer_elapsed, this,
+                m_io_strand.wrap(boost::bind(&AbelGetworkClient::getwork_timer_elapsed, this,
                     boost::asio::placeholders::error)));
         }
         else
@@ -436,7 +436,7 @@ void EthGetworkClient::processResponse(Json::Value& JRes)
                 }
                 m_getwork_timer.expires_from_now(boost::posix_time::milliseconds(m_farmRecheckPeriod));
                 m_getwork_timer.async_wait(
-                    m_io_strand.wrap(boost::bind(&EthGetworkClient::getwork_timer_elapsed, this,
+                    m_io_strand.wrap(boost::bind(&AbelGetworkClient::getwork_timer_elapsed, this,
                         boost::asio::placeholders::error)));
             }
         }
@@ -470,7 +470,7 @@ void EthGetworkClient::processResponse(Json::Value& JRes)
 
 }
 
-std::string EthGetworkClient::processError(Json::Value& JRes)
+std::string AbelGetworkClient::processError(Json::Value& JRes)
 {
     std::string retVar;
 
@@ -506,12 +506,12 @@ std::string EthGetworkClient::processError(Json::Value& JRes)
     return retVar;
 }
 
-void EthGetworkClient::send(Json::Value const& jReq)
+void AbelGetworkClient::send(Json::Value const& jReq)
 {
     send(std::string(Json::writeString(m_jSwBuilder, jReq)));
 }
 
-void EthGetworkClient::send(std::string const& sReq)
+void AbelGetworkClient::send(std::string const& sReq)
 {
     std::string* line = new std::string(sReq);
     m_txQueue.push(line);
@@ -521,7 +521,7 @@ void EthGetworkClient::send(std::string const& sReq)
         begin_connect();
 }
 
-void EthGetworkClient::submitHashrate(uint64_t const& rate, string const& id)
+void AbelGetworkClient::submitHashrate(uint64_t const& rate, string const& id)
 {
     // No need to check for authorization
     if (m_session)
@@ -538,7 +538,7 @@ void EthGetworkClient::submitHashrate(uint64_t const& rate, string const& id)
 
 }
 
-void EthGetworkClient::submitSolution(const Solution& solution)
+void AbelGetworkClient::submitSolution(const Solution& solution)
 {
 
     if (m_session)
@@ -550,7 +550,7 @@ void EthGetworkClient::submitSolution(const Solution& solution)
         jReq["id"] = id;
         jReq["jsonrpc"] = "2.0";
         m_solution_submitted_max_id = max(m_solution_submitted_max_id, id);
-        jReq["method"] = "eth_submitWork";
+        jReq["method"] = "submitwork";
         jReq["params"] = Json::Value(Json::arrayValue);
         jReq["params"].append("0x" + nonceHex);
         jReq["params"].append("0x" + solution.work.header.hex());
@@ -560,7 +560,7 @@ void EthGetworkClient::submitSolution(const Solution& solution)
 
 }
 
-void EthGetworkClient::getwork_timer_elapsed(const boost::system::error_code& ec)
+void AbelGetworkClient::getwork_timer_elapsed(const boost::system::error_code& ec)
 {
     // Triggers the resubmission of a getWork request
     if (!ec)

@@ -10,6 +10,7 @@
 
 #include "PoolClient.h"
 #include "getwork/EthGetworkClient.h"
+#include "getwork/AbelGetworkClient.h"
 #include "stratum/EthStratumClient.h"
 #include "testing/SimulateClient.h"
 

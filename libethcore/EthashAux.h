@@ -64,8 +64,12 @@ struct WorkPackage
     int epoch = -1;
     int block = -1;
 
-    uint64_t startNonce = 0;
+    uint64_t extraNonce = 0;
+    uint16_t extraNonceBitsNum = 0;
+    //  todo: this will be replaced by extraNonceBitsNum
     uint16_t exSizeBytes = 0;
+
+    uint64_t startNonce = 0;
 
     std::string algo = "ethash";
 };

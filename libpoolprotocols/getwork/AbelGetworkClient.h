@@ -58,7 +58,7 @@ private:
     boost::asio::streambuf m_request;
     boost::asio::streambuf m_response;
     Json::StreamWriterBuilder m_jSwBuilder;
-    std::string m_jsonGetWork;
+    //std::string m_jsonGetWork;
     Json::Value m_pendingJReq;
     std::chrono::time_point<std::chrono::steady_clock> m_pending_tstamp;
 

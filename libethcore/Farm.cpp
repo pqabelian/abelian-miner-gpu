@@ -222,19 +222,45 @@ void Farm::setWork(WorkPackage const& _newWp)
 
     m_currentWp = _newWp;
 
+//    // Check if we need to shuffle per work (ergodicity == 2)
+//    if (m_Settings.ergodicity == 2 && m_currentWp.exSizeBytes == 0)
+//        shuffle();
+//
+//    //  todo: AbelianStratum will require that startNonceBitsNum is not zero, and make sure each job has a unique (contentHash, startNonce).
+//    //  todo: can use (contentHash, startNonce) as the job name/index.
+//    uint64_t _startNonce;
+//    if (m_currentWp.exSizeBytes > 0)
+//    {
+//        // Equally divide the residual segment among miners
+//        _startNonce = m_currentWp.startNonce;
+//        m_nonce_segment_with =
+//            (unsigned int)log2(pow(2, 64 - (m_currentWp.exSizeBytes * 4)) / m_miners.size());
+//    }
+//    else
+//    {
+//        // Get the randomly selected nonce
+//        _startNonce = m_nonce_scrambler;
+//    }
+//
+//    for (unsigned int i = 0; i < m_miners.size(); i++)
+//    {
+//        m_currentWp.startNonce = _startNonce + ((uint64_t)i << m_nonce_segment_with);
+//        m_miners.at(i)->setWork(m_currentWp);
+//    }
+
     // Check if we need to shuffle per work (ergodicity == 2)
-    if (m_Settings.ergodicity == 2 && m_currentWp.exSizeBytes == 0)
-        shuffle();
+//    if (m_Settings.ergodicity == 2 && m_currentWp.exSizeBytes == 0)
+//        shuffle();
 
     //  todo: AbelianStratum will require that startNonceBitsNum is not zero, and make sure each job has a unique (contentHash, startNonce).
     //  todo: can use (contentHash, startNonce) as the job name/index.
     uint64_t _startNonce;
-    if (m_currentWp.exSizeBytes > 0)
+    if (m_currentWp.extraNonceBitsNum > 0)
     {
         // Equally divide the residual segment among miners
-        _startNonce = m_currentWp.startNonce;
+        _startNonce = m_currentWp.extraNonce << (64-m_currentWp.extraNonceBitsNum);
         m_nonce_segment_with =
-            (unsigned int)log2(pow(2, 64 - (m_currentWp.exSizeBytes * 4)) / m_miners.size());
+            (unsigned int)log2(pow(2, 64 - m_currentWp.extraNonceBitsNum) / m_miners.size());
     }
     else
     {

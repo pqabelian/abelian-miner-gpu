@@ -23,12 +23,15 @@ AbelGetworkClient::AbelGetworkClient(int worktimeout, unsigned farmRecheckPeriod
 {
     m_jSwBuilder.settings_["indentation"] = "";
 
-    Json::Value jGetWork;
-    jGetWork["id"] = unsigned(1);
-    jGetWork["jsonrpc"] = "2.0";
-    jGetWork["method"] = "getwork";
-    jGetWork["params"] = Json::Value(Json::arrayValue);
-    m_jsonGetWork = std::string(Json::writeString(m_jSwBuilder, jGetWork));
+//    Json::Value jGetWork;
+//    jGetWork["id"] = unsigned(1);
+//    jGetWork["jsonrpc"] = "2.0";
+//    jGetWork["method"] = "getwork";
+//    //jGetWork["params"] = Json::Value(Json::arrayValue);
+//    jGetWork["params"] = Json::Value(Json::arrayValue);
+//    jGetWork["params"].append("");  //  initial request does not have currentjobid
+//    m_jsonGetWork = std::string(Json::writeString(m_jSwBuilder, jGetWork));
+//    cwarn << m_jsonGetWork;
 }
 
 AbelGetworkClient::~AbelGetworkClient()
@@ -70,7 +73,16 @@ void AbelGetworkClient::connect()
         // No need to use the resolver if host is already an IP address
         m_endpoints.push(boost::asio::ip::tcp::endpoint(
             boost::asio::ip::address::from_string(m_conn->Host()), m_conn->Port()));
-        send(m_jsonGetWork);
+
+        //send(m_jsonGetWork);
+        Json::Value jGetWork;
+        jGetWork["id"] = unsigned(1);
+        jGetWork["jsonrpc"] = "2.0";
+        jGetWork["method"] = "getwork";
+        jGetWork["params"] = Json::Value(Json::arrayValue);
+        jGetWork["params"].append(m_current.job);
+        std::string jsonGetWork = std::string(Json::writeString(m_jSwBuilder, jGetWork));
+        send(jsonGetWork);
     }
 }
 
@@ -157,6 +169,7 @@ void AbelGetworkClient::handle_connect(const boost::system::error_code& ec)
                     os << "Host: " << m_conn->Host() << "\r\n";
                     os << "Content-Type: application/json"
                        << "\r\n";
+                    os << "Authorization: Basic c2RoZmlzZGhhb2ZzaGRqODc3OmVmb3dmenhrc2RrbGpmdg==" << "\r\n";
                     os << "Content-Length: " << line->length() << "\r\n";
                     os << "Connection: close\r\n\r\n";  // Double line feed to mark the
                                                         // beginning of body
@@ -362,7 +375,15 @@ void AbelGetworkClient::handle_resolve(
         m_resolver.cancel();
 
         // Resolver has finished so invoke connection asynchronously
-        send(m_jsonGetWork);
+        // send(m_jsonGetWork);
+        Json::Value jGetWork;
+        jGetWork["id"] = unsigned(1);
+        jGetWork["jsonrpc"] = "2.0";
+        jGetWork["method"] = "getwork";
+        jGetWork["params"] = Json::Value(Json::arrayValue);
+        jGetWork["params"].append(m_current.job);
+        std::string jsonGetWork = std::string(Json::writeString(m_jSwBuilder, jGetWork));
+        send(jsonGetWork);
     }
     else
     {
@@ -374,7 +395,7 @@ void AbelGetworkClient::handle_resolve(
 void AbelGetworkClient::processResponse(Json::Value& JRes)
 {
     unsigned _id = 0;  // This SHOULD be the same id as the request it is responding to
-    bool _isSuccess = false;  // Whether or not this is a succesful or failed response
+    bool _isSuccess = false;  // Whether or not this is a successful or failed response
     string _errReason = "";   // Content of the error reason
 
     if (!JRes.isMember("id"))
@@ -391,10 +412,10 @@ void AbelGetworkClient::processResponse(Json::Value& JRes)
     _errReason = (_isSuccess ? "" : processError(JRes));
 
     // We have only theese possible ids
-    // 0 or 1 as job notification
-    // 9 as response for eth_submitHashrate
+    // 1 as response for getwork
+    // 9 as response for submithashrate
     // 40+ for responses to mining submissions
-    if (_id == 0 || _id == 1)
+    if (_id == 1)
     {
         // Getwork might respond with an error to
         // a request. (eg. node is still syncing)
@@ -423,11 +444,22 @@ void AbelGetworkClient::processResponse(Json::Value& JRes)
                 Json::Value JPrm = JRes.get("result", Json::Value::null);
                 WorkPackage newWp;
 
-                newWp.header = h256(JPrm.get(Json::Value::ArrayIndex(0), "").asString());
-                newWp.seed = h256(JPrm.get(Json::Value::ArrayIndex(1), "").asString());
-                newWp.boundary = h256(JPrm.get(Json::Value::ArrayIndex(2), "").asString());
-                newWp.job = newWp.header.hex();
-                if (m_current.header != newWp.header)
+                newWp.header = h256(JPrm.get(Json::String("contenthash"), "").asString());
+                newWp.seed = h256(JPrm.get(Json::String("epochseed"), "").asString());
+                newWp.boundary = h256(JPrm.get(Json::String("targetboundary"), "").asString());
+
+                newWp.extraNonce = JPrm.get("extranonce", 0).asInt64();
+                newWp.extraNonceBitsNum = JPrm.get("extranoncebitsnum", 0).asInt();
+
+                newWp.epoch = JPrm.get("epoch", 0).asInt();
+                newWp.job = JPrm.get(Json::String("jobid"), "").asString();
+
+//                newWp.header = h256(JPrm.get(Json::Value::ArrayIndex(0), "").asString());
+//                newWp.seed = h256(JPrm.get(Json::Value::ArrayIndex(1), "").asString());
+//                newWp.boundary = h256(JPrm.get(Json::Value::ArrayIndex(2), "").asString());
+//                newWp.job = newWp.header.hex();
+                //if (m_current.header != newWp.header)
+                if ( m_current.job.compare(newWp.job) != 0 )
                 {
                     m_current = newWp;
                     m_current_tstamp = std::chrono::steady_clock::now();
@@ -530,10 +562,10 @@ void AbelGetworkClient::submitHashrate(uint64_t const& rate, string const& id)
         Json::Value jReq;
         jReq["id"] = unsigned(9);
         jReq["jsonrpc"] = "2.0";
-        jReq["method"] = "eth_submitHashrate";
+        jReq["method"] = "submithashrate";
         jReq["params"] = Json::Value(Json::arrayValue);
-        jReq["params"].append(toHex(rate, HexPrefix::Add));  // Already expressed as hex
         jReq["params"].append(id);                           // Already prefixed by 0x
+        jReq["params"].append(toHex(rate, HexPrefix::Add));  // Already expressed as hex
         send(jReq);
     }
 
@@ -553,8 +585,9 @@ void AbelGetworkClient::submitSolution(const Solution& solution)
         m_solution_submitted_max_id = max(m_solution_submitted_max_id, id);
         jReq["method"] = "submitwork";
         jReq["params"] = Json::Value(Json::arrayValue);
+        jReq["params"].append(solution.work.job); // jobid
         jReq["params"].append("0x" + nonceHex);
-        jReq["params"].append("0x" + solution.work.header.hex());
+        //jReq["params"].append("0x" + solution.work.header.hex());
         jReq["params"].append("0x" + solution.mixHash.hex());
         send(jReq);
     }
@@ -577,8 +610,15 @@ void AbelGetworkClient::getwork_timer_elapsed(const boost::system::error_code& e
         }
         else
         {
-            send(m_jsonGetWork);
-        }
+            // send(m_jsonGetWork);
+            Json::Value jGetWork;
+            jGetWork["id"] = unsigned(1);
+            jGetWork["jsonrpc"] = "2.0";
+            jGetWork["method"] = "getwork";
+            jGetWork["params"] = Json::Value(Json::arrayValue);
+            jGetWork["params"].append(m_current.job);
+            std::string jsonGetWork = std::string(Json::writeString(m_jSwBuilder, jGetWork));
+            send(jsonGetWork);        }
 
     }
 }

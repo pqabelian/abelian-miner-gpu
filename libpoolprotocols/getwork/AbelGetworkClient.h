@@ -29,7 +29,7 @@ public:
     void submitSolution(const Solution& solution) override;
 
 private:
-    unsigned m_farmRecheckPeriod = 500;  // In milliseconds
+    unsigned m_farmRecheckPeriod = 5000;  // In milliseconds
 
     void begin_connect();
     void handle_resolve(

@@ -254,6 +254,15 @@ public:
 
     void clear() { m_data.fill(0); }
 
+    void reverse() {
+        for (unsigned i = 0; i < N/2; ++i)
+        {
+            byte temp = m_data[i];
+            m_data[i] = m_data[N-i-1];
+            m_data[N-i-1] = temp;
+        }
+    }
+
 private:
     std::array<byte, N> m_data;  ///< The binary data.
 };

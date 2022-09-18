@@ -524,7 +524,13 @@ void Farm::submitProofAsync(Solution const& _s)
     if (!m_Settings.noEval)
     {
         Result r = EthashAux::eval(_s.work.epoch, _s.work.header, _s.nonce);
-        if (r.value > _s.work.boundary)
+
+        h256 sealhash = h256(r.value);
+        sealhash.reverse();
+
+        //cwarn << "content hash = " << _s.work.header.hex() << ", nonce = " << _s.nonce << ", mixdigest=" << r.mixHash.hex() << ", ethhash = " << r.value.hex() << ", sealhash=" << sealhash.hex() << "\n";
+
+        if (sealhash > _s.work.boundary)
         {
             accountSolution(_s.midx, SolutionAccountingEnum::Failed);
             cwarn << "GPU " << _s.midx

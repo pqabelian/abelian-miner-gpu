@@ -4,6 +4,7 @@
 #include <string>
 
 #include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/lockfree/queue.hpp>
@@ -24,6 +25,7 @@ public:
     AbelGetworkClient(int worktimeout, unsigned farmRecheckPeriod);
     ~AbelGetworkClient();
 
+    void init_socket();
     void connect() override;
     void disconnect() override;
 
@@ -51,9 +53,12 @@ private:
     std::atomic<bool> m_txPending = {false};  // Whether or not an async socket operation is pending
     boost::lockfree::queue<std::string*> m_txQueue;
 
+    boost::asio::io_service& m_io_service;  // The IO service reference passed in the constructor
     boost::asio::io_service::strand m_io_strand;
 
-    boost::asio::ip::tcp::socket m_socket;
+    std::shared_ptr<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>> m_securesocket; 
+    std::shared_ptr<boost::asio::ip::tcp::socket> m_nonsecuresocket;
+    boost::asio::ip::tcp::socket* m_socket;
     boost::asio::ip::tcp::resolver m_resolver;
     std::queue<boost::asio::ip::basic_endpoint<boost::asio::ip::tcp>> m_endpoints;
 
@@ -73,4 +78,11 @@ private:
     unsigned m_solution_submitted_max_id;  // maximum json id we used to send a solution
 
     string m_username,m_password;
+
+    ///@brief Auxiliary function to make verbose_verification objects.
+    template <typename Verifier>
+    verbose_verification<Verifier> make_verbose_verification(Verifier verifier)
+    {
+        return verbose_verification<Verifier>(verifier);
+    }
 };

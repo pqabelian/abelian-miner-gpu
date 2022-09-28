@@ -13,8 +13,9 @@ using boost::asio::ip::tcp;
 AbelGetworkClient::AbelGetworkClient(int worktimeout, unsigned farmRecheckPeriod,string username,string password)
   : PoolClient(),
     m_farmRecheckPeriod(farmRecheckPeriod),
+    m_io_service(g_io_service),
     m_io_strand(g_io_service),
-    m_socket(g_io_service),
+    m_socket(nullptr),
     m_txQueue(64),
     m_resolver(g_io_service),
     m_endpoints(),
@@ -29,8 +30,9 @@ AbelGetworkClient::AbelGetworkClient(int worktimeout, unsigned farmRecheckPeriod
 AbelGetworkClient::AbelGetworkClient(int worktimeout, unsigned farmRecheckPeriod)
   : PoolClient(),
     m_farmRecheckPeriod(farmRecheckPeriod),
+    m_io_service(g_io_service),
     m_io_strand(g_io_service),
-    m_socket(g_io_service),
+    m_socket(nullptr),
     m_txQueue(64),
     m_resolver(g_io_service),
     m_endpoints(),
@@ -56,6 +58,95 @@ AbelGetworkClient::~AbelGetworkClient()
     // It's global
 }
 
+void AbelGetworkClient::init_socket()
+{
+    // Prepare Socket
+    if (m_conn->SecLevel() != SecureLevel::NONE)
+    {
+        boost::asio::ssl::context::method method = boost::asio::ssl::context::tls_client;
+        if (m_conn->SecLevel() == SecureLevel::TLS12)
+            method = boost::asio::ssl::context::tlsv12;
+
+        // 绑定上下文
+        boost::asio::ssl::context ctx(method);
+        m_securesocket = std::make_shared<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>(
+            m_io_service, ctx);
+        m_socket = &m_securesocket->next_layer();
+
+        // 设置验证与否
+        if (getenv("SSL_NOVERIFY"))
+        {
+            m_securesocket->set_verify_mode(boost::asio::ssl::verify_none);
+        }
+        else
+        {
+            m_securesocket->set_verify_mode(boost::asio::ssl::verify_peer);
+            m_securesocket->set_verify_callback(
+                make_verbose_verification(boost::asio::ssl::rfc2818_verification(m_conn->Host())));
+        }
+#ifdef _WIN32
+        HCERTSTORE hStore = CertOpenSystemStore(0, "ROOT");
+        if (hStore == nullptr)
+        {
+            return;
+        }
+
+        X509_STORE* store = X509_STORE_new();
+        PCCERT_CONTEXT pContext = nullptr;
+        while ((pContext = CertEnumCertificatesInStore(hStore, pContext)) != nullptr)
+        {
+            X509* x509 = d2i_X509(
+                nullptr, (const unsigned char**)&pContext->pbCertEncoded, pContext->cbCertEncoded);
+            if (x509 != nullptr)
+            {
+                X509_STORE_add_cert(store, x509);
+                X509_free(x509);
+            }
+        }
+
+        CertFreeCertificateContext(pContext);
+        CertCloseStore(hStore, 0);
+
+        SSL_CTX_set_cert_store(ctx.native_handle(), store);
+#else
+        char* certPath = getenv("SSL_CERT_FILE");
+        try
+        {
+            ctx.load_verify_file(certPath ? certPath : "/etc/ssl/certs/ca-certificates.crt");
+        }
+        catch (...)
+        {
+            cwarn << "Failed to load ca certificates. Either the file "
+                     "'/etc/ssl/certs/ca-certificates.crt' does not exist";
+            cwarn << "or the environment variable SSL_CERT_FILE is set to an invalid or "
+                     "inaccessible file.";
+            cwarn << "It is possible that certificate verification can fail.";
+        }
+#endif
+    }
+    else
+    {
+        m_nonsecuresocket = std::make_shared<boost::asio::ip::tcp::socket>(m_io_service);
+        m_socket = m_nonsecuresocket.get();
+    }
+
+    // Activate keep alive to detect disconnects
+    unsigned int keepAlive = 10000;
+
+#if defined(_WIN32)
+    int32_t timeout = keepAlive;
+    setsockopt(
+        m_socket->native_handle(), SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
+    setsockopt(
+        m_socket->native_handle(), SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout, sizeof(timeout));
+#else
+    timeval tv{
+        static_cast<suseconds_t>(keepAlive / 1000), static_cast<suseconds_t>(keepAlive % 1000)};
+    setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+#endif
+}
+
 void AbelGetworkClient::connect()
 {
     // Prevent unnecessary and potentially dangerous recursion
@@ -65,6 +156,10 @@ void AbelGetworkClient::connect()
 
     // Reset status flags
     m_getwork_timer.cancel();
+
+    if(m_socket==nullptr){
+        init_socket();
+    }
 
     // Initialize a new queue of end points
     m_endpoints = std::queue<boost::asio::ip::basic_endpoint<boost::asio::ip::tcp>>();
@@ -89,6 +184,8 @@ void AbelGetworkClient::connect()
         // No need to use the resolver if host is already an IP address
         m_endpoints.push(boost::asio::ip::tcp::endpoint(
             boost::asio::ip::address::from_string(m_conn->Host()), m_conn->Port()));
+        m_io_service.post(m_io_strand.wrap(boost::bind(&AbelGetworkClient::begin_connect, this)));
+
 
         //send(m_jsonGetWork);
         Json::Value jGetWork;
@@ -101,6 +198,8 @@ void AbelGetworkClient::connect()
         send(jsonGetWork);
     }
 }
+
+
 
 void AbelGetworkClient::disconnect()
 {
@@ -131,11 +230,28 @@ void AbelGetworkClient::begin_connect()
         // Pick the first endpoint in list.
         // Eventually endpoints get discarded on connection errors
         m_endpoint = m_endpoints.front();
-        m_socket.async_connect(
-            m_endpoint, m_io_strand.wrap(boost::bind(&AbelGetworkClient::handle_connect, this, _1)));
+        
+        if(m_socket){
+            init_socket();
+        }
+        m_connecting.store(true, std::memory_order::memory_order_relaxed);
+        // Start connecting async
+        if (m_conn->SecLevel() != SecureLevel::NONE)
+        {
+            m_securesocket->lowest_layer().async_connect(m_endpoint,
+                m_io_strand.wrap(boost::bind(&AbelGetworkClient::handle_connect, this, _1)));
+        }
+        else
+        {
+            m_socket->async_connect(m_endpoint,
+                m_io_strand.wrap(boost::bind(&AbelGetworkClient::handle_connect, this, _1)));
+        }
+        // m_socket.async_connect(
+        //     m_endpoint, m_io_strand.wrap(boost::bind(&AbelGetworkClient::handle_connect, this, _1)));
     }
     else
     {
+        m_connecting.store(false, std::memory_order_relaxed);
         cwarn << "No more IP addresses to try for host: " << m_conn->Host();
         disconnect();
     }
@@ -143,7 +259,7 @@ void AbelGetworkClient::begin_connect()
 
 void AbelGetworkClient::handle_connect(const boost::system::error_code& ec)
 {
-    if (!ec && m_socket.is_open())
+    if (!ec && m_socket->is_open())
     {
 
         // If in "connecting" phase raise the proper event
@@ -203,7 +319,7 @@ void AbelGetworkClient::handle_connect(const boost::system::error_code& ec)
 
                     delete line;
 
-                    async_write(m_socket, m_request,
+                    async_write(*m_socket, m_request,
                         m_io_strand.wrap(boost::bind(&AbelGetworkClient::handle_write, this,
                             boost::asio::placeholders::error)));
                     break;
@@ -237,7 +353,7 @@ void AbelGetworkClient::handle_write(const boost::system::error_code& ec)
     {
         // Transmission succesfully sent.
         // Read the response async.
-        async_read(m_socket, m_response, boost::asio::transfer_all(),
+        async_read(*m_socket, m_response, boost::asio::transfer_all(),
             m_io_strand.wrap(boost::bind(&AbelGetworkClient::handle_read, this,
                 boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred)));
     }
@@ -259,8 +375,8 @@ void AbelGetworkClient::handle_read(
     if (!ec || ec == boost::asio::error::eof)
     {
         // Close socket
-        if (m_socket.is_open())
-            m_socket.close();
+        if (m_socket->is_open())
+            m_socket->close();
 
         // Get the whole message
         std::string rx_message(

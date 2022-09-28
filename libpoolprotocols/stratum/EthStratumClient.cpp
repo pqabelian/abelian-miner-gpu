@@ -43,11 +43,13 @@ void EthStratumClient::init_socket()
         if (m_conn->SecLevel() == SecureLevel::TLS12)
             method = boost::asio::ssl::context::tlsv12;
 
+        // 绑定上下文
         boost::asio::ssl::context ctx(method);
         m_securesocket = std::make_shared<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>(
             m_io_service, ctx);
         m_socket = &m_securesocket->next_layer();
 
+        // 设置验证与否
         if (getenv("SSL_NOVERIFY"))
         {
             m_securesocket->set_verify_mode(boost::asio::ssl::verify_none);

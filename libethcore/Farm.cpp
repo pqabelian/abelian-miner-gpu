@@ -525,6 +525,7 @@ void Farm::submitProofAsync(Solution const& _s)
     {
         Result r = EthashAux::eval(_s.work.epoch, _s.work.header, _s.nonce);
 
+        //  AbelEthashPoW
         h256 sealhash = h256(r.value);
         sealhash.reverse();
 

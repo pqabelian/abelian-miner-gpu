@@ -12,6 +12,7 @@
 #include "getwork/EthGetworkClient.h"
 #include "getwork/AbelGetworkClient.h"
 #include "stratum/EthStratumClient.h"
+#include "stratum/AbelStratumClient.h"
 #include "testing/SimulateClient.h"
 
 using namespace std;

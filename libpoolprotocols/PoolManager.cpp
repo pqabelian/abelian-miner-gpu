@@ -429,8 +429,10 @@ void PoolManager::rotateConnect()
         p_client =
             std::unique_ptr<PoolClient>(new AbelGetworkClient(m_Settings.noWorkTimeout, m_Settings.getWorkPollInterval,m_Settings.connections[0]->User(),m_Settings.connections[0]->Pass()));
         if (m_Settings.connections.at(m_activeConnectionIdx)->Family() == ProtocolFamily::STRATUM)
-            p_client = std::unique_ptr<PoolClient>(
-                new EthStratumClient(m_Settings.noWorkTimeout, m_Settings.noResponseTimeout));
+//            p_client = std::unique_ptr<PoolClient>(
+//                new EthStratumClient(m_Settings.noWorkTimeout, m_Settings.noResponseTimeout));
+        p_client = std::unique_ptr<PoolClient>(
+            new AbelStratumClient(m_Settings.noWorkTimeout, m_Settings.noResponseTimeout));
         if (m_Settings.connections.at(m_activeConnectionIdx)->Family() == ProtocolFamily::SIMULATION)
             p_client = std::unique_ptr<PoolClient>(new SimulateClient(m_Settings.benchmarkBlock));
 

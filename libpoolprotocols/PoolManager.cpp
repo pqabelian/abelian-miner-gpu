@@ -164,7 +164,7 @@ void PoolManager::setClientHandlers()
         int _currentEpoch = m_currentWp.epoch;
         bool newEpoch = (_currentEpoch == -1);
 
-        // In EthereumStratum/2.0.0 epoch number is set in session
+        // In AbelianStratum epoch number is set in session
         if (!newEpoch)
         {
             if (p_client->getConnection()->StratumMode() == 3)
@@ -185,8 +185,8 @@ void PoolManager::setClientHandlers()
             if (wp.epoch == -1)
             {
                 if (m_currentWp.block >= 0)
-                    //  todo: AbelianStratum
                     // m_currentWp.epoch = m_currentWp.block / 30000;
+                    // AbelianStratum, hardcode (56000, 4000)
                     m_currentWp.epoch = (m_currentWp.block - 56000) / 4000;
                 else
                     m_currentWp.epoch = ethash::find_epoch_number(

@@ -22,6 +22,32 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+template <typename Verifier>
+class verbose_verification
+{
+public:
+    verbose_verification(Verifier verifier) : verifier_(verifier) {}
+
+    bool operator()(bool preverified, boost::asio::ssl::verify_context& ctx)
+    {
+        char subject_name[256];
+        X509* cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
+        X509_NAME_oneline(X509_get_subject_name(cert), subject_name, 256);
+        bool verified = verifier_(preverified, ctx);
+#ifdef DEV_BUILD
+        cnote << "Certificate: " << subject_name << " " << (verified ? "Ok" : "Failed");
+#else
+        if (!verified)
+            cnote << "Certificate: " << subject_name << " "
+                  << "Failed";
+#endif
+        return verified;
+    }
+
+private:
+    Verifier verifier_;
+};
+
 class EthStratumClient : public PoolClient
 {
 public:
@@ -44,7 +70,6 @@ public:
     // Connected and Connection Statuses
     bool isConnected() override
     {
-        // m_connected && !(m_connecting||m_disconnecting)
         bool _ret = PoolClient::isConnected();
         return _ret && !isPendingState();
     }

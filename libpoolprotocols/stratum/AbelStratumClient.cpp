@@ -128,7 +128,7 @@ void AbelStratumClient::connect()
     // Prevent unnecessary and potentially dangerous recursion
     if (m_connecting.load(std::memory_order::memory_order_relaxed))
         return;
-    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect() begin");
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "AbelStratumClient::connect() begin");
 
     // Start timing operations
     m_workloop_timer.expires_from_now(boost::posix_time::milliseconds(m_workloop_interval));
@@ -168,7 +168,7 @@ void AbelStratumClient::connect()
         m_io_service.post(m_io_strand.wrap(boost::bind(&AbelStratumClient::start_connect, this)));
     }
 
-    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect() end");
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "AbelStratumClient::connect() end");
 }
 
 void AbelStratumClient::disconnect()
@@ -502,7 +502,7 @@ void AbelStratumClient::connect_handler(const boost::system::error_code& ec)
         m_endpoints.pop();
         m_io_service.post(m_io_strand.wrap(boost::bind(&AbelStratumClient::start_connect, this)));
 
-        DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect_handler() end1");
+        DEV_BUILD_LOG_PROGRAMFLOW(cnote, "AbelStratumClient::connect_handler() end1");
         return;
     }
 
@@ -689,12 +689,15 @@ std::string AbelStratumClient::processError(Json::Value& responseObject)
 }
 
 //  todo: this function needs to be refactored, based on the design of extraNonce
-void AbelStratumClient::processExtranonce(std::string& enonce)
+void AbelStratumClient::processExtraNonce(std::string& extraNonce, std::string& extraNonceBitsNum)
 {
-    m_session->extraNonceSizeBytes = enonce.length();
-    cnote << "Extranonce set to " EthWhite << enonce << EthReset;
-    enonce.resize(16, '0');
-    m_session->extraNonce = std::stoull(enonce, nullptr, 16);
+    extraNonce.resize(16, '0');
+    m_session->extraNonce = std::stoull(extraNonce, nullptr, 16);
+
+    extraNonceBitsNum.resize(1, '0');
+    m_session->extraNonceSizeBytes = std::stoull(extraNonceBitsNum, nullptr, 16);
+
+    cnote << "(extraNonce, extraNonceBitsNum) set to (" EthWhite << extraNonce << "," <<  extraNonceBitsNum << ")" << EthReset;
 }
 
 void AbelStratumClient::processResponse(Json::Value& responseObject)
@@ -872,6 +875,7 @@ void AbelStratumClient::processResponse(Json::Value& responseObject)
                 jReq["id"] = unsigned(3);
                 jReq["method"] = "mining.authorize";
                 jReq["params"] = Json::Value(Json::arrayValue);
+                // todo: username, password, address
                 jReq["params"].append(m_conn->UserDotWorker() + m_conn->Path());
                 jReq["params"].append(m_conn->Pass());
                 enqueue_response_plea();
@@ -997,21 +1001,34 @@ void AbelStratumClient::processResponse(Json::Value& responseObject)
             }
 
             jPrm = responseObject["params"];
-            m_current.job = jPrm.get(Json::Value::ArrayIndex(0), "").asString();
-            m_current.block =
-                stoul(jPrm.get(Json::Value::ArrayIndex(1), "").asString(), nullptr, 16);
-
-            string header =
-                "0x" + dev::padLeft(jPrm.get(Json::Value::ArrayIndex(2), "").asString(), 64, '0');
-
+            m_current.job = jPrm.get("job_id", "").asString();
+            m_current.block = stoul(jPrm.get("height", "").asString(), nullptr, 16);
+            string header = "0x" + dev::padLeft(jPrm.get("content_hash", "").asString(), 64, '0');
             m_current.header = h256(header);
-            //  todo: In AbelianStratum, boundary is used to set the targetDifficulty/hash
+
+            //  todo: clean_job ???
+
+//            m_current.job = jPrm.get(Json::Value::ArrayIndex(0), "").asString();
+//            m_current.block =
+//                stoul(jPrm.get(Json::Value::ArrayIndex(1), "").asString(), nullptr, 16);
+//
+//            string header =
+//                "0x" + dev::padLeft(jPrm.get(Json::Value::ArrayIndex(2), "").asString(), 64, '0');
+//
+//            m_current.header = h256(header);
+
+            //  boundary, epoch, algo, extraNonce, extraNonceBitsNum use the old value.
+            //  todo: AbelianStratum's design is different from the old stratum protocol, we may need refactor the desugn of mining.notify and mining.set.
             m_current.boundary = h256(m_session->nextWorkBoundary.hex(HexPrefix::Add));
             m_current.epoch = m_session->epoch;
             m_current.algo = m_session->algo;
-            //  todo: In AbelianStratum, extraNonce and exSizeBytes will be refactored to startNonce and startNonceBitsNum
-            m_current.startNonce = m_session->extraNonce;
-            m_current.exSizeBytes = m_session->extraNonceSizeBytes;
+
+//            m_current.startNonce = m_session->extraNonce;
+//            m_current.exSizeBytes = m_session->extraNonceSizeBytes;
+
+            m_current.extraNonce = m_session->extraNonce;
+            m_current.extraNonceBitsNum = m_session->extraNonceSizeBytes;
+
             m_current_timestamp = std::chrono::steady_clock::now();
 
             // This will signal to dispatch the job
@@ -1026,8 +1043,9 @@ void AbelStratumClient::processResponse(Json::Value& responseObject)
               "params": {
                   "epoch" : "dc",
                   "target" : "0112e0be826d694b2e62d01511f12a6061fbaec8bc02357593e70e52ba",
-                  "algo" : "ethash",
+                  "algo" : "abelethash",
                   "extranonce" : "af4c"
+                  "ExtraNonceBitsNum": "f"
               }
             }
             */
@@ -1039,12 +1057,13 @@ void AbelStratumClient::processResponse(Json::Value& responseObject)
             }
             m_session->firstMiningSet = true;
             jPrm = responseObject["params"];
-            string timeout = jPrm.get("timeout", "").asString();
             string epoch = jPrm.get("epoch", "").asString();
             string target = jPrm.get("target", "").asString();
 
-            if (!timeout.empty())
-                m_session->timeout = stoi(timeout, nullptr, 16);
+            // todo: AbelianStratum does not consider timeout, Shall we consider?
+//            string timeout = jPrm.get("timeout", "").asString();
+//            if (!timeout.empty())
+//                m_session->timeout = stoi(timeout, nullptr, 16);
 
             if (!epoch.empty())
                 m_session->epoch = stoul(epoch, nullptr, 16);
@@ -1055,17 +1074,24 @@ void AbelStratumClient::processResponse(Json::Value& responseObject)
                 m_session->nextWorkBoundary = h256(target);
             }
 
-            //  todo: AbelianStratum, extranonce should be refactored to startNonce. ethash to abelethash?
-            m_session->algo = jPrm.get("algo", "ethash").asString();
-            string enonce = jPrm.get("extranonce", "").asString();
-            if (!enonce.empty())
-                processExtranonce(enonce);
+            m_session->algo = jPrm.get("algo", "abelethash").asString();
+
+            string extraNonce = jPrm.get("extranonce", "").asString();
+            // todo: modify extra_nonce_bits_num to extranonce_bitsnum ?
+            string extraNonceBitsNum = jPrm.get("extra_nonce_bits_num", "").asString();
+            //  extraNonceBitsNum explicitly specifies the bits num (bits width) of extraNonce
+            //  for example, extraNonce could be "a0" which means 160, while extraNonceBitsNum could be 16 to specify that 160 in [0,65535]
+            if (!extraNonce.empty() && !extraNonceBitsNum.empty())
+                processExtraNonce(extraNonce, extraNonceBitsNum);
         }
         else if (_method == "mining.bye" && m_conn->StratumMode() == ABELIANSTRATUM)
         {
             cnote << m_conn->Host() << " requested connection close. Disconnecting ...";
             m_io_service.post(m_io_strand.wrap(boost::bind(&AbelStratumClient::disconnect, this)));
         }
+
+        // todo:
+        // "mining.set_difficutly" need to handle?
 
 
         else if (_method == "client.get_version")

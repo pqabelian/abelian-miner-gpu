@@ -69,7 +69,7 @@ private:
 
     void processResponse(Json::Value& responseObject);
     std::string processError(Json::Value& erroresponseObject);
-    void processExtranonce(std::string& enonce);
+    void processExtraNonce(std::string& extraNonce, std::string& extraNonceBitsNum);
 
     void recvSocketData();
     void onRecvSocketDataCompleted(

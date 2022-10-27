@@ -62,6 +62,10 @@ struct Session
     uint64_t extraNonce = 0;
     // Length of extranonce in bytes
     unsigned int extraNonceSizeBytes = 0;
+
+    // bit length of extraNonce, AbelianStratum
+    uint16_t extraNonceBitsNum = 0;
+
     // Next work target
     h256 nextWorkBoundary =
         h256("0x00000000ffff0000000000000000000000000000000000000000000000000000");

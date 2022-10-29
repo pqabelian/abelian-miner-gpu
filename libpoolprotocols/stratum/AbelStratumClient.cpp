@@ -612,9 +612,10 @@ void AbelStratumClient::connect_handler(const boost::system::error_code& ec)
 
         jReq["method"] = "mining.hello";
         Json::Value jPrm;
-        jPrm["agent"] = ethminer_get_buildinfo()->project_name_with_version;
+        jPrm["agent"] = ethminer_get_buildinfo()->project_name_with_version + ":GPU";
         jPrm["host"] = m_conn->Host();
         jPrm["port"] = toCompactHex((uint32_t)m_conn->Port(), HexPrefix::DontAdd);
+        // todo: alignment with server
         jPrm["proto"] = "AbelianStratum";
         jReq["params"] = jPrm;
 
@@ -691,11 +692,11 @@ std::string AbelStratumClient::processError(Json::Value& responseObject)
 //  todo: this function needs to be refactored, based on the design of extraNonce
 void AbelStratumClient::processExtraNonce(std::string& extraNonce, std::string& extraNonceBitsNum)
 {
-    extraNonce.resize(16, '0');
+    //extraNonce.resize(16, '0');
     m_session->extraNonce = std::stoull(extraNonce, nullptr, 16);
 
-    extraNonceBitsNum.resize(1, '0');
-    m_session->extraNonceSizeBytes = std::stoull(extraNonceBitsNum, nullptr, 16);
+    //extraNonceBitsNum.resize(2, '0');
+    m_session->extraNonceBitsNum = std::stoull(extraNonceBitsNum, nullptr, 16);
 
     cnote << "(extraNonce, extraNonceBitsNum) set to (" EthWhite << extraNonce << "," <<  extraNonceBitsNum << ")" << EthReset;
 }
@@ -876,6 +877,7 @@ void AbelStratumClient::processResponse(Json::Value& responseObject)
                 jReq["method"] = "mining.authorize";
                 jReq["params"] = Json::Value(Json::arrayValue);
                 // todo: username, password, address
+                //  todo: alignment with server, address could be empty (depends on whether username password exist in pool.account)
                 jReq["params"].append(m_conn->UserDotWorker() + m_conn->Path());
                 jReq["params"].append(m_conn->Pass());
                 enqueue_response_plea();
@@ -1045,7 +1047,7 @@ void AbelStratumClient::processResponse(Json::Value& responseObject)
                   "target" : "0112e0be826d694b2e62d01511f12a6061fbaec8bc02357593e70e52ba",
                   "algo" : "abelethash",
                   "extranonce" : "af4c"
-                  "ExtraNonceBitsNum": "f"
+                  "ExtraNonceBitsNum": "10" //  0x10=16
               }
             }
             */
@@ -1080,9 +1082,16 @@ void AbelStratumClient::processResponse(Json::Value& responseObject)
             // todo: modify extra_nonce_bits_num to extranonce_bitsnum ?
             string extraNonceBitsNum = jPrm.get("extra_nonce_bits_num", "").asString();
             //  extraNonceBitsNum explicitly specifies the bits num (bits width) of extraNonce
-            //  for example, extraNonce could be "a0" which means 160, while extraNonceBitsNum could be 16 to specify that 160 in [0,65535]
+            //  for example, extraNonce could be "a0" which means 160, while extraNonceBitsNum could be 16 to specify that 160 in [0,2^16-1]
             if (!extraNonce.empty() && !extraNonceBitsNum.empty())
                 processExtraNonce(extraNonce, extraNonceBitsNum);
+
+            if (m_session->extraNonceBitsNum >= 64 || m_session->extraNonce >= 1 << (m_session->extraNonceBitsNum) - 1)
+            {
+                cnote << m_conn->Host() << " sent wrong (extraNonce, extranNonceBitsNum)= (" << m_session->extraNonce << ", " << m_session->extraNonceBitsNum << "), which will waste computation power. Disconnecting ...";
+                m_io_service.post(m_io_strand.wrap(boost::bind(&AbelStratumClient::disconnect, this)));
+            }
+
         }
         else if (_method == "mining.bye" && m_conn->StratumMode() == ABELIANSTRATUM)
         {

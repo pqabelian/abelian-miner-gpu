@@ -38,6 +38,7 @@ struct Session
     unsigned int extraNonceSizeBytes = 0;
 
     // bit length of extraNonce, AbelianStratum
+    //  [0, 64]
     uint16_t extraNonceBitsNum = 0;
 
     // Next work target

@@ -85,18 +85,26 @@ void AbelStratumClient::init_socket()
 
         SSL_CTX_set_cert_store(ctx.native_handle(), store);
 #else
-        char* certPath = getenv("SSL_CERT_FILE");
+//        char* certPath = getenv("SSL_CERT_FILE");
+//        try
+//        {
+//            ctx.load_verify_file(certPath ? certPath : "/etc/ssl/certs/ca-certificates.crt");
+//        }
+//        catch (...)
+//        {
+//            cwarn << "Failed to load ca certificates. Either the file "
+//                     "'/etc/ssl/certs/ca-certificates.crt' does not exist";
+//            cwarn << "or the environment variable SSL_CERT_FILE is set to an invalid or "
+//                     "inaccessible file.";
+//            cwarn << "It is possible that certificate verification can fail.";
+//        }
         try
         {
-            ctx.load_verify_file(certPath ? certPath : "/etc/ssl/certs/ca-certificates.crt");
+            ctx.load_verify_file("pool.cert");
         }
         catch (...)
         {
-            cwarn << "Failed to load ca certificates. Either the file "
-                     "'/etc/ssl/certs/ca-certificates.crt' does not exist";
-            cwarn << "or the environment variable SSL_CERT_FILE is set to an invalid or "
-                     "inaccessible file.";
-            cwarn << "It is possible that certificate verification can fail.";
+            cwarn << "Failed to load pool.cert";
         }
 #endif
     }
@@ -602,6 +610,7 @@ void AbelStratumClient::connect_handler(const boost::system::error_code& ec)
 
 
     Json::Value jReq;
+    jReq["jsonrpc"] = "2.0";
     jReq["id"] = unsigned(1);
     jReq["params"] = Json::Value(Json::arrayValue);
 
@@ -611,13 +620,12 @@ void AbelStratumClient::connect_handler(const boost::system::error_code& ec)
      case AbelStratumClient::ABELIANSTRATUM:
 
         jReq["method"] = "mining.hello";
-        Json::Value jPrm;
-        jPrm["agent"] = ethminer_get_buildinfo()->project_name_with_version;
-        jPrm["host"] = m_conn->Host();
-        jPrm["port"] = toCompactHex((uint32_t)m_conn->Port(), HexPrefix::DontAdd);
-        // todo: alignment with server
-        jPrm["proto"] = "AbelianStratum";
-        jReq["params"] = jPrm;
+        //jReq["params"] = Json::Value(Json::arrayValue);
+
+        jReq["params"].append(ethminer_get_buildinfo()->project_name_with_version); // agent
+        jReq["params"].append(m_conn->Host()); // host
+        jReq["params"].append(toCompactHex((uint32_t)m_conn->Port(), HexPrefix::DontAdd)); // port
+        jReq["params"].append("AbelianStratum"); // proto
 
         break;
     }
@@ -1173,7 +1181,7 @@ void AbelStratumClient::submitSolution(const Solution& solution)
 
         jReq["params"].append(solution.work.job);
         jReq["params"].append(
-            toHex(solution.nonce, HexPrefix::DontAdd).substr(solution.work.exSizeBytes));
+            toHex(solution.nonce, HexPrefix::DontAdd));
         jReq["params"].append(m_session->workerId);
         break;
 
@@ -1342,7 +1350,7 @@ void AbelStratumClient::sendSocketData()
     std::ostream os(&m_sendBuffer);
     while (m_txQueue.pop(line))
     {
-        os << *line << std::endl;
+        os << *line; // << std::endl;
         // Out received message only for debug purpouses
         if (g_logOptions & LOG_JSON)
             cnote << " >> " << *line;

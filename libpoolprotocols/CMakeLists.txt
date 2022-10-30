@@ -2,8 +2,7 @@ set(SOURCES
 	PoolURI.cpp PoolURI.h
 	PoolClient.h
 	PoolManager.h PoolManager.cpp
-	testing/SimulateClient.h testing/SimulateClient.cpp
-	stratum/EthStratumClient.h stratum/EthStratumClient.cpp stratum/AbelStratumClient.cpp stratum/AbelStratumClient.h
+	testing/SimulateClient.h testing/SimulateClient.cpp stratum/AbelStratumClient.cpp stratum/AbelStratumClient.h
 	getwork/EthGetworkClient.h getwork/EthGetworkClient.cpp getwork/AbelGetworkClient.h getwork/AbelGetworkClient.cpp
         getwork/base64.cpp getwork/base64.h )
 

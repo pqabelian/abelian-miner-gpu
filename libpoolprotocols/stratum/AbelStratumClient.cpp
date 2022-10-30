@@ -612,7 +612,7 @@ void AbelStratumClient::connect_handler(const boost::system::error_code& ec)
 
         jReq["method"] = "mining.hello";
         Json::Value jPrm;
-        jPrm["agent"] = ethminer_get_buildinfo()->project_name_with_version + ":GPU";
+        jPrm["agent"] = ethminer_get_buildinfo()->project_name_with_version;
         jPrm["host"] = m_conn->Host();
         jPrm["port"] = toCompactHex((uint32_t)m_conn->Port(), HexPrefix::DontAdd);
         // todo: alignment with server
@@ -1086,7 +1086,7 @@ void AbelStratumClient::processResponse(Json::Value& responseObject)
             if (!extraNonce.empty() && !extraNonceBitsNum.empty())
                 processExtraNonce(extraNonce, extraNonceBitsNum);
 
-            if (m_session->extraNonceBitsNum >= 64 || m_session->extraNonce >= 1 << (m_session->extraNonceBitsNum) - 1)
+            if (m_session->extraNonceBitsNum >= 64 || m_session->extraNonce >= (1 << m_session->extraNonceBitsNum) - 1)
             {
                 cnote << m_conn->Host() << " sent wrong (extraNonce, extranNonceBitsNum)= (" << m_session->extraNonce << ", " << m_session->extraNonceBitsNum << "), which will waste computation power. Disconnecting ...";
                 m_io_service.post(m_io_strand.wrap(boost::bind(&AbelStratumClient::disconnect, this)));

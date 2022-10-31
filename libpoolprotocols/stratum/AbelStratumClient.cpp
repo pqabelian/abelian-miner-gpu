@@ -610,7 +610,7 @@ void AbelStratumClient::connect_handler(const boost::system::error_code& ec)
 
 
     Json::Value jReq;
-    jReq["jsonrpc"] = "2.0";
+    //jReq["jsonrpc"] = "2.0";
     jReq["id"] = unsigned(1);
     jReq["params"] = Json::Value(Json::arrayValue);
 
@@ -1350,7 +1350,7 @@ void AbelStratumClient::sendSocketData()
     std::ostream os(&m_sendBuffer);
     while (m_txQueue.pop(line))
     {
-        os << *line; // << std::endl;
+        os << *line << std::endl;
         // Out received message only for debug purpouses
         if (g_logOptions & LOG_JSON)
             cnote << " >> " << *line;

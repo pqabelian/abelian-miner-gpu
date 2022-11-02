@@ -8,7 +8,7 @@ set(EXECUTABLE ethminer)
 
 file(GLOB HEADERS "*.h")
 
-add_executable(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
+add_executable(${EXECUTABLE} ${SRC_LIST} ${HEADERS} poolaccounts/PoolAccounts.h poolaccounts/abelmine/AbelMineAccount.cpp poolaccounts/abelmine/AbelMineAccount.h poolaccounts/abelmine/utils/SHA256.cpp poolaccounts/abelmine/utils/SHA256.h poolaccounts/abelmine/utils/stringutils.cpp poolaccounts/abelmine/utils/stringutils.h)
 if(MSVC)
 	target_sources(${EXECUTABLE} PRIVATE ethminer.rc)
 endif()

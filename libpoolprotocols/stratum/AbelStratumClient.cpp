@@ -888,6 +888,8 @@ void AbelStratumClient::processResponse(Json::Value& responseObject)
                 //  todo: alignment with server, address could be empty (depends on whether username password exist in pool.account)
                 jReq["params"].append(m_conn->UserDotWorker() + m_conn->Path());
                 jReq["params"].append(m_conn->Pass());
+                //  address, which is not "" only when register new account to the pool.
+                jReq["params"].append(m_conn->AbelAddress());
                 enqueue_response_plea();
                 send(jReq);
             }

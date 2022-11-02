@@ -20,6 +20,8 @@
 #include <ethminer/buildinfo.h>
 #include <condition_variable>
 
+#include "poolaccounts/abelmine/AbelMineAccount.h"
+
 #ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
 #define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
 #endif
@@ -452,6 +454,25 @@ public:
                 try
                 {
                     std::shared_ptr<URI> uri = std::shared_ptr<URI>(new URI(url));
+
+                    if ( uri->User().find(poolaccounts::abelmine::registerAccountAbelMine) != string::npos)
+                    {
+                        // this url is using RegisterAccount function for pool-account-mechanism abelmine
+                        poolaccounts::abelmine::AbelMineAccount abelMineAccount;
+                        if ( !abelMineAccount.registerAccount() )
+                        {
+                            throw std::invalid_argument(
+                                "argument " + poolaccounts::abelmine::registerAccountAbelMine + " is used, but fail to register an abelmine account.");
+                        }
+                        // (m_user, m_password, m_address) is set.
+                        uri->SetRegisteredAccount(abelMineAccount.m_user, abelMineAccount.m_password, abelMineAccount.m_address);
+                        warnings.push("You are registering a new abelmine account in host " + uri->Host() + " and this new registered account is used in this run.");
+                        warnings.push("In next run, please make sure the abelminer command line use the user information in " + poolaccounts::abelmine::abelMineAccountFile + ".");
+                    } else {
+                        // nothing to do
+                        // if more pool-account-mechanism is supported, added here
+                    }
+
                     if (uri->SecLevel() != dev::SecureLevel::NONE &&
                         uri->HostNameType() != dev::UriHostNameType::Dns && !getenv("SSL_NOVERIFY"))
                     {

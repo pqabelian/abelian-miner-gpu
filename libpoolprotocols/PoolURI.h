@@ -62,6 +62,7 @@ public:
     unsigned short Port() const { return m_port; }
     std::string User() const { return m_user; }
     std::string Pass() const { return m_password; }
+    std::string AbelAddress() const { return m_abeladdress; }
     std::string Workername() const { return m_worker; }
     std::string UserDotWorker() const;
     SecureLevel SecLevel() const;
@@ -87,6 +88,13 @@ public:
     bool Responds() { return m_responds; }
     void Responds(bool _value) { m_responds = _value; }
 
+    void SetRegisteredAccount(std::string user, std::string password, std::string abelAddress)
+    {
+        m_user = user;
+        m_password =  password;
+        m_abeladdress = abelAddress;
+    }
+
     void addDuration(unsigned long _minutes) { m_totalDuration += _minutes; }
     unsigned long getDuration() { return m_totalDuration; }
 
@@ -104,6 +112,7 @@ private:
     std::string m_fragment;
     std::string m_user;
     std::string m_password = "X";
+    std::string m_abeladdress = ""; // Abelian has a long wallet address so that the address could be contained in command line, this long address is set here when registering to pool.
     std::string m_worker;
     std::string m_uri;
 

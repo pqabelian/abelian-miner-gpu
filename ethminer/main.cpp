@@ -455,19 +455,18 @@ public:
                 {
                     std::shared_ptr<URI> uri = std::shared_ptr<URI>(new URI(url));
 
-                    if ( uri->User().find(poolaccounts::abelmine::registerAccountAbelMine) != string::npos)
+                    if ( uri->User().find(poolaccounts::abelmine::registeringAccountAbelMine) != string::npos)
                     {
-                        // this url is using RegisterAccount function for pool-account-mechanism abelmine
+                        // this url is using RegisteringAccount function for pool-account-mechanism abelmine
                         poolaccounts::abelmine::AbelMineAccount abelMineAccount;
-                        if ( !abelMineAccount.registerAccount() )
+                        if ( !abelMineAccount.prepareRegisterAddress(uri->Host()) )
                         {
                             throw std::invalid_argument(
-                                "argument " + poolaccounts::abelmine::registerAccountAbelMine + " is used, but fail to register an abelmine account.");
+                                "argument " + poolaccounts::abelmine::registeringAccountAbelMine + " is used, but fail to prepare the register information (address, password).");
                         }
-                        // (m_user, m_password, m_address) is set.
-                        uri->SetRegisteredAccount(abelMineAccount.m_user, abelMineAccount.m_password, abelMineAccount.m_address);
-                        warnings.push("You are registering a new abelmine account in host " + uri->Host() + " and this new registered account is used in this run.");
-                        warnings.push("In next run, please make sure the abelminer command line use the user information in " + poolaccounts::abelmine::abelMineAccountFile + ".");
+                        // m_address is set successfully during prepareRegisterAddress().
+                        uri->SetRegisterAddress(abelMineAccount.m_address);
+                        warnings.push("You are registering a new abelmine account with password= " + uri->Pass() + " in host " + uri->Host() + ".");
                     } else {
                         // nothing to do
                         // if more pool-account-mechanism is supported, added here

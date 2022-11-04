@@ -3,6 +3,7 @@
 #include <ethash/ethash.hpp>
 
 #include "AbelStratumClient.h"
+#include "ethminer/poolaccounts/abelmine/AbelMineAccount.h"
 
 #ifdef _WIN32
 // Needed for certificates validation on TLS connections
@@ -866,7 +867,21 @@ void AbelStratumClient::processResponse(Json::Value& responseObject)
             {
                 response_delay_ms = dequeue_response_plea();
 
-                if (!jResult.isString() || !jResult.asString().size())
+                if (responseObject["result"].empty())
+                {
+                    {
+                        // Got invalid session id which is mandatory
+                        cwarn << "Got invalid or missing session id. Disconnecting ... ";
+                        m_conn->MarkUnrecoverable();
+                        m_io_service.post(
+                            m_io_strand.wrap(boost::bind(&AbelStratumClient::disconnect, this)));
+                        return;
+                    }
+                }
+
+                string sessionId = jResult.get("session_id", "").asString();
+
+                if ( !sessionId.size() )
                 {
                     // Got invalid session id which is mandatory
                     cwarn << "Got invalid or missing session id. Disconnecting ... ";
@@ -876,7 +891,7 @@ void AbelStratumClient::processResponse(Json::Value& responseObject)
                     return;
                 }
 
-                m_session->sessionId = jResult.asString();
+                m_session->sessionId = sessionId;
                 m_session->subscribed.store(true, memory_order_relaxed);
 
                 // Request authorization
@@ -890,6 +905,16 @@ void AbelStratumClient::processResponse(Json::Value& responseObject)
                 jReq["params"].append(m_conn->Pass());
                 //  address, which is not "" only when register new account to the pool.
                 jReq["params"].append(m_conn->AbelAddress());
+                if ( m_conn->User().find(poolaccounts::abelmine::registeringAccountAbelMine) != string::npos)
+                {
+                    //  is registering a new account
+                    jReq["params"].append("1");
+                }
+                else
+                {
+                    jReq["params"].append("0");
+                }
+
                 enqueue_response_plea();
                 send(jReq);
             }
@@ -899,7 +924,7 @@ void AbelStratumClient::processResponse(Json::Value& responseObject)
         {
             response_delay_ms = dequeue_response_plea();
 
-            if (!_isSuccess || (!jResult.isString() || !jResult.asString().size()))
+            if (!_isSuccess || responseObject["result"].empty() )
             {
                 // Got invalid session id which is mandatory
                 cnote << "Worker " << EthWhite << m_conn->UserDotWorker() << EthReset
@@ -911,7 +936,7 @@ void AbelStratumClient::processResponse(Json::Value& responseObject)
             }
             m_authpending.store(false, memory_order_relaxed);
             m_session->authorized.store(true, memory_order_relaxed);
-            m_session->workerId = jResult.asString();
+            m_session->workerId = jResult.get("worker", "").asString();
             cnote << "Authorized worker " << m_conn->UserDotWorker();
 
             // Nothing else to here. Wait for notifications from pool
@@ -963,6 +988,12 @@ void AbelStratumClient::processResponse(Json::Value& responseObject)
             }
         }
 
+        else if (_id == 7)
+        {
+            // Response to noop
+            // do nothing
+        }
+
         else
         {
             cnote << "Got response for unknown message id [" << _id << "] Discarding...";
@@ -992,10 +1023,10 @@ void AbelStratumClient::processResponse(Json::Value& responseObject)
             {
               "method": "mining.notify",
               "params": [
-                  "bf0488aa",
-                  "6526d5"
-                  "645cf20198c2f3861e947d4f67e3ab63b7b2e24dcc9095bd9123e7b33371f6cc",
-                  "0"
+                  "job_id" : "bf0488aa",
+                  "Height" : "6526d5"
+                  "ContentHash" : "645cf20198c2f3861e947d4f67e3ab63b7b2e24dcc9095bd9123e7b33371f6cc",
+                  "CleanJob" : "0"
               ]
             }
             */
@@ -1005,8 +1036,9 @@ void AbelStratumClient::processResponse(Json::Value& responseObject)
                 return;
             }
 
-            if (!responseObject.isMember("params") || !responseObject["params"].isArray() ||
-                responseObject["params"].empty() || responseObject["params"].size() != 4)
+
+            if (!responseObject.isMember("params") || !responseObject["params"].isObject() ||
+                    responseObject["params"].empty() )
             {
                 cwarn << "Got invalid mining.notify message. Discarding ...";
                 return;
@@ -1039,7 +1071,7 @@ void AbelStratumClient::processResponse(Json::Value& responseObject)
 //            m_current.exSizeBytes = m_session->extraNonceSizeBytes;
 
             m_current.extraNonce = m_session->extraNonce;
-            m_current.extraNonceBitsNum = m_session->extraNonceSizeBytes;
+            m_current.extraNonceBitsNum = m_session->extraNonceBitsNum;
 
             m_current_timestamp = std::chrono::steady_clock::now();
 

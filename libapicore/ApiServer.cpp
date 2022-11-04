@@ -674,6 +674,7 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         if (exp > 50)
             exp = 40;  // Not above
         Farm::f().set_nonce_scrambler(nonce);
+        //  todo: Abelminer does not support this API at this moment, if needed, will set_nonce_bits_num()
         Farm::f().set_nonce_segment_width(exp);
         jResponse["result"] = true;
     }

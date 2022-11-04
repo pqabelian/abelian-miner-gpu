@@ -88,10 +88,8 @@ public:
     bool Responds() { return m_responds; }
     void Responds(bool _value) { m_responds = _value; }
 
-    void SetRegisteredAccount(std::string user, std::string password, std::string abelAddress)
+    void SetRegisterAddress(std::string abelAddress)
     {
-        m_user = user;
-        m_password =  password;
         m_abeladdress = abelAddress;
     }
 

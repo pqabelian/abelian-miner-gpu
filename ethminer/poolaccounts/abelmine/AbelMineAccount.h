@@ -17,11 +17,12 @@ namespace abelmine
  * In next start of abelminer, the command line should use the user (or (user, password) if necessary) in "abelmine.account".
  */
 
-//  RegisterAccountAbelMine is used in command line to trigger the poolAccounts module to register account fo "abelmine" mechanism.
-//  The recommended name for (pool-account-mechanism XXYYZZ) "RegisterAccountXXYYZZ", as "RegisterAccount" is used to trigger the poolAccounts module.
-const std::string registerAccountAbelMine = "RegisterAccountAbelMine";
+//  RegisteringAccountAbelMine is used in command line to trigger the poolAccounts module to register account fo "abelmine" mechanism.
+//  The recommended name for (pool-account-mechanism XXYYZZ) "RegisteringAccountXXYYZZ", as "RegisteringAccount" is used to trigger the poolAccounts module.
+const std::string registeringAccountAbelMine = "RegisteringAccountAbelMine";
 
 //  abelMineAccountFile is the file to which the generated (user, password) for pool-account-mechanism abelmine will be writen.
+const std::string abelMineAccountFileExtension = ".abelmine.account";
 const std::string abelMineAccountFile = "abelmine.account";
 
 //  abelMineAddressFile is the file from which an address to be registered for pool-account-mechanism abelmine can be loaded.
@@ -36,6 +37,7 @@ public:
     std::string m_address;
 
     AbelMineAccount();
+    bool prepareRegisterAddress(std::string poolHost="", std::string workingDir = "");
     bool registerAccount(std::string workingDir = "");
     bool isValidAddress(std::string address);
 };

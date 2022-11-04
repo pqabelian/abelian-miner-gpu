@@ -17,8 +17,8 @@
 #include <string>
 namespace poolaccounts
 {
-//  registerAccount is used in command line to trigger the poolAccounts module to register account.
-const std::string registerAccount = "RegisterAccount";
+//  registeringAccount is used in command line to trigger the poolAccounts module to register account.
+const std::string registeringAccount = "RegisteringAccount";
 } // namespace poolaccounts
 
 

@@ -265,7 +265,9 @@ void Farm::setWork(WorkPackage const& _newWp)
     else
     {
         // Get the randomly selected nonce
+        // !!! This SHOULD NOT happen for AbelianStratum.
         _startNonce = m_nonce_scrambler;
+        m_nonce_segment_with = (unsigned int)log2(pow(2, 64) / m_miners.size());
     }
 
     for (unsigned int i = 0; i < m_miners.size(); i++)
@@ -529,7 +531,11 @@ void Farm::submitProofAsync(Solution const& _s)
         h256 sealhash = h256(r.value);
         sealhash.reverse();
 
-        //cwarn << "content hash = " << _s.work.header.hex() << ", nonce = " << _s.nonce << ", mixdigest=" << r.mixHash.hex() << ", ethhash = " << r.value.hex() << ", sealhash=" << sealhash.hex() << "\n";
+        cwarn << "epoch: " << _s.work.epoch << "\n";
+        cwarn << "content hash =: " << _s.work.header.hex() << "\n";
+        cwarn << "nonce: " << toHex(_s.nonce) << "\n";
+
+        cwarn << "mixdigest=" << r.mixHash.hex() << ", ethhash = " << r.value.hex() << ", sealhash=" << sealhash.hex() << "\n";
 
         if (sealhash > _s.work.boundary)
         {

@@ -20,6 +20,54 @@ AbelMineAccount::AbelMineAccount()
     m_address = "";
 }
 
+
+bool AbelMineAccount::prepareRegisterAddress(std::string poolHost, std::string workingDir)
+{
+    if (!workingDir.empty())
+    {
+        int ret = chdir(workingDir.c_str());
+        if (-1 == ret)
+        {
+            std::cerr << "unable to change to directory " + workingDir << std::endl;
+            return false;
+        }
+    }
+
+    //  read address
+    std::ifstream inFileAddress;
+    inFileAddress.open(abelMineAddressFile, std::ios::in);
+    if (!inFileAddress.is_open())
+    {
+        std::cerr << "Unable to read file " + abelMineAddressFile << std::endl;
+        return false;
+    }
+    getline(inFileAddress, m_address);
+    inFileAddress.close();
+
+    if (!isValidAddress(m_address))
+    {
+        std::cerr << "The address is invalid" << std::endl;
+        return false;
+    }
+
+
+    // write address to account file
+    std::string accountFile = poolHost + abelMineAccountFileExtension;
+    std::ofstream ofs;
+    ofs.open(accountFile,std::ios::out);
+    if(!ofs.is_open()) {
+        std::cerr << "Unable to open file " + accountFile << std::endl;
+        return false;
+    }
+    ofs << "address=" << m_address << std::endl;
+    ofs.close();
+
+    std::cout << "Address has been written to account file " << accountFile << " successfully." << std::endl;
+
+    return true;
+}
+
+
 bool AbelMineAccount::registerAccount(std::string workingDir)
 {
     if (!workingDir.empty())

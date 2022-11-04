@@ -167,7 +167,7 @@ void PoolManager::setClientHandlers()
         // In AbelianStratum epoch number is set in session
         if (!newEpoch)
         {
-            if (p_client->getConnection()->StratumMode() == 3)
+            if (p_client->getConnection()->StratumMode() == AbelStratumClient::ABELIANSTRATUM)
                 newEpoch = (wp.epoch != m_currentWp.epoch);
             else
                 newEpoch = (wp.seed != m_currentWp.seed);

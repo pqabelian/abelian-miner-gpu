@@ -466,6 +466,9 @@ public:
                         }
                         // m_address is set successfully during prepareRegisterAddress().
                         uri->SetRegisterAddress(abelMineAccount.m_address);
+                        // todo: later ill generate user name at pool side begin
+                        uri->SetRegisterUser(abelMineAccount.m_user);
+                        // todo: later ill generate user name at pool side end
                         warnings.push("You are registering a new abelmine account with password= " + uri->Pass() + " in host " + uri->Host() + ".");
                     } else {
                         // nothing to do

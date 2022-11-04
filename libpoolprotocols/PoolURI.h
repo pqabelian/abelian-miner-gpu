@@ -92,6 +92,12 @@ public:
     {
         m_abeladdress = abelAddress;
     }
+    // todo: later ill generate user name at pool side begin
+    void SetRegisterUser(std::string user)
+    {
+        m_user = user;
+    }
+    // todo: later ill generate user name at pool side end
 
     void addDuration(unsigned long _minutes) { m_totalDuration += _minutes; }
     unsigned long getDuration() { return m_totalDuration; }

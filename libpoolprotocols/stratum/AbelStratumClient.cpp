@@ -905,15 +905,18 @@ void AbelStratumClient::processResponse(Json::Value& responseObject)
                 jReq["params"].append(m_conn->Pass());
                 //  address, which is not "" only when register new account to the pool.
                 jReq["params"].append(m_conn->AbelAddress());
-                if ( m_conn->User().find(poolaccounts::abelmine::registeringAccountAbelMine) != string::npos)
-                {
-                    //  is registering a new account
-                    jReq["params"].append("1");
-                }
-                else
-                {
-                    jReq["params"].append("0");
-                }
+
+//                //  todo: Later will register user  begin
+//                if ( m_conn->User().find(poolaccounts::abelmine::registeringAccountAbelMine) != string::npos)
+//                {
+//                    //  is registering a new account
+//                    jReq["params"].append("1");
+//                }
+//                else
+//                {
+//                    jReq["params"].append("0");
+//                }
+//                // todo: Later will register user  end
 
                 enqueue_response_plea();
                 send(jReq);

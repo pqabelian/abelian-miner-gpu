@@ -54,7 +54,7 @@ bool AbelMineAccount::prepareRegisterAddress(std::string poolHost, std::string w
     // write address to account file
     std::string accountFile = poolHost + abelMineAccountFileExtension;
     std::ofstream ofs;
-    ofs.open(accountFile,std::ios::out);
+    ofs.open(accountFile,std::ios::app);
     if(!ofs.is_open()) {
         std::cerr << "Unable to open file " + accountFile << std::endl;
         return false;

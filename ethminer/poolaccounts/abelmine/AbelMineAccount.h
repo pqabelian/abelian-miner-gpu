@@ -1,6 +1,6 @@
 
-#ifndef ETHMINER_ABELMINEACCOUNT_H
-#define ETHMINER_ABELMINEACCOUNT_H
+#ifndef ABELMINER_ABELMINEACCOUNT_H
+#define ABELMINER_ABELMINEACCOUNT_H
 
 
 #include <string>
@@ -45,4 +45,4 @@ public:
 }   // namesapce abelmine
 }   // namespace poolaccounts
 
-#endif  // ETHMINER_ABELMINEACCOUNT_H
+#endif  // ABELMINER_ABELMINEACCOUNT_H

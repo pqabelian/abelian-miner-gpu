@@ -11,8 +11,8 @@
  * abelmine is added on 2022.11.
  */
 
-#ifndef ETHMINER_POOLACCOUNTS_H
-#define ETHMINER_POOLACCOUNTS_H
+#ifndef ABELMINER_POOLACCOUNTS_H
+#define ABELMINER_POOLACCOUNTS_H
 
 #include <string>
 namespace poolaccounts
@@ -22,4 +22,4 @@ const std::string registeringAccount = "RegisteringAccount";
 } // namespace poolaccounts
 
 
-#endif  // ETHMINER_POOLACCOUNTS_H
+#endif  // ABELMINER_POOLACCOUNTS_H

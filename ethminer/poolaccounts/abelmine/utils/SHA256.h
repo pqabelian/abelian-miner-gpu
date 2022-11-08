@@ -1,7 +1,7 @@
 
 
-#ifndef ETHMINER_ABELMINEACCOUNT_SHA256_H
-#define ETHMINER_ABELMINEACCOUNT_SHA256_H
+#ifndef ABELMINER_ABELMINEACCOUNT_SHA256_H
+#define ABELMINER_ABELMINEACCOUNT_SHA256_H
 
 #include <string>
 #include <array>
@@ -60,4 +60,4 @@ private:
 }   //  namespace abelmine
 }   //  namespace poolaccounts
 
-#endif  // ETHMINER_ABELMINEACCOUNT_SHA256_H
+#endif  // ABELMINER_ABELMINEACCOUNT_SHA256_H

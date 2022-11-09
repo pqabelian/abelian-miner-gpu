@@ -3,6 +3,7 @@
 #include <ethash/ethash.hpp>
 
 #include "AbelStratumClient.h"
+#include "ethminer/poolaccounts/PoolAccounts.h"
 #include "ethminer/poolaccounts/abelmine/AbelMineAccount.h"
 
 #ifdef _WIN32
@@ -899,24 +900,24 @@ void AbelStratumClient::processResponse(Json::Value& responseObject)
                 jReq["id"] = unsigned(3);
                 jReq["method"] = "mining.authorize";
                 jReq["params"] = Json::Value(Json::arrayValue);
-                // todo: username, password, address
-                //  todo: alignment with server, address could be empty (depends on whether username password exist in pool.account)
+
+                // (username, password, address)
                 jReq["params"].append(m_conn->UserDotWorker() + m_conn->Path());
                 jReq["params"].append(m_conn->Pass());
                 //  address, which is not "" only when register new account to the pool.
                 jReq["params"].append(m_conn->AbelAddress());
 
-//                //  todo: Later will register user  begin
-//                if ( m_conn->User().find(poolaccounts::abelmine::registeringAccountAbelMine) != string::npos)
-//                {
-//                    //  is registering a new account
-//                    jReq["params"].append("1");
-//                }
-//                else
-//                {
-//                    jReq["params"].append("0");
-//                }
-//                // todo: Later will register user  end
+                //  registering
+                if ( m_conn->User().find(poolaccounts::registeringAccount) != string::npos)
+                {
+                    //  is registering a new account
+                    jReq["params"].append("1");
+                }
+                else
+                {
+                    jReq["params"].append("0");
+                }
+
 
                 enqueue_response_plea();
                 send(jReq);
@@ -929,9 +930,17 @@ void AbelStratumClient::processResponse(Json::Value& responseObject)
 
             if (!_isSuccess || responseObject["result"].empty() )
             {
-                // Got invalid session id which is mandatory
-                cnote << "Worker " << EthWhite << m_conn->UserDotWorker() << EthReset
-                      << " not authorized : " << _errReason;
+                // authorization or registration fails
+                if ( m_conn->User().find(poolaccounts::registeringAccount) != string::npos)
+                {
+                    cnote << "Fail to register new address: "  << _errReason;
+                }
+                else
+                {
+                    cnote << "Worker " << EthWhite << m_conn->UserDotWorker() << EthReset
+                          << " not authorized : " << _errReason;
+                }
+
                 m_conn->MarkUnrecoverable();
                 m_io_service.post(
                     m_io_strand.wrap(boost::bind(&AbelStratumClient::disconnect, this)));
@@ -940,7 +949,38 @@ void AbelStratumClient::processResponse(Json::Value& responseObject)
             m_authpending.store(false, memory_order_relaxed);
             m_session->authorized.store(true, memory_order_relaxed);
             m_session->workerId = jResult.get("worker", "").asString();
-            cnote << "Authorized worker " << m_conn->UserDotWorker();
+
+            if ( jResult.get("registered", "").asString() == "1")
+            {
+                //  This is a response to a registering authorize request
+                string username = jResult.get("username", "").asString();
+                cnote << "User " << username << "has been registered in " << m_conn->Host() << " successfully.";
+
+                if ( m_conn->User().find(poolaccounts::abelmine::registeringAccountAbelMine) != string::npos)
+                {
+                    poolaccounts::abelmine::AbelMineAccount abelMineAccount;
+                    abelMineAccount.m_user = username;
+                    if ( abelMineAccount.storeRegisteredAccount(m_conn->Host()) )
+                    {
+                        cnote << "Username " << username << "has been writen in the account file for " << m_conn->Host() << " successfully.";
+                    }
+                    else
+                    {
+                        cwarn << "Fail to write username " << username << " to the account file for " << m_conn->Host() << ".  Please do it by hand.";
+                    }
+                }// todo: if more pool-account-mechanisms are supported, add them here
+                else
+                {
+                    //  should not happen
+                    cwarn << "Pool account mechanism " << m_conn->User() << "is not supported";
+                }
+
+                m_conn->SetRegisterUser(username);
+            }
+            else
+            {
+                cnote << "Authorized worker " << m_conn->UserDotWorker();
+            }
 
             // Nothing else to here. Wait for notifications from pool
         }

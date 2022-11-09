@@ -38,6 +38,7 @@ public:
 
     AbelMineAccount();
     bool prepareRegisterAddress(std::string poolHost="", std::string workingDir = "");
+    bool storeRegisteredAccount(std::string poolHost="", std::string workingDir = "");
     bool registerAccount(std::string workingDir = "");
     bool isValidAddress(std::string address);
 };

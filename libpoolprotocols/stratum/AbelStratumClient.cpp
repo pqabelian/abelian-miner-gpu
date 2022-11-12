@@ -100,13 +100,16 @@ void AbelStratumClient::init_socket()
 //                     "inaccessible file.";
 //            cwarn << "It is possible that certificate verification can fail.";
 //        }
+
+        string certPath = "./poolcerts/" + m_conn->Host() + ".cert";
         try
         {
-            ctx.load_verify_file("pool.cert");
+            ctx.load_verify_file(certPath);
+            cnote << "Pool cert " << certPath << " is loaded successfully.";
         }
         catch (...)
         {
-            cwarn << "Failed to load pool.cert";
+            cwarn << "Failed to load pool cert " << certPath;
         }
 #endif
     }

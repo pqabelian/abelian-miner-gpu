@@ -750,6 +750,17 @@ void AbelStratumClient::processResponse(Json::Value& responseObject)
         cwarn << "Do not blame abelminer for this. Ask pool devs to honor http://www.jsonrpc.org/ "
                  "specifications ";
         cwarn << "Disconnecting...";
+
+        // todo: to identify a strange problem begin
+        cwarn << "Details of the invalid jsonrpc message: ";
+
+        cwarn << "responseObject.rpcVer: " << _rpcVer;
+        cwarn << "responseObject.id: " << _id;
+        cwarn << "responseObject.isSuccess: " << _isSuccess;
+        cwarn << "responseObject.errReason: " << _errReason;
+        cwarn << "responseObject.method: " << _method;
+        cwarn << "responseObject.isNotification: " << _isNotification;
+
         m_io_service.post(m_io_strand.wrap(boost::bind(&AbelStratumClient::disconnect, this)));
         return;
     }

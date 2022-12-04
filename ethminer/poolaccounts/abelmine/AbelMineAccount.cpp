@@ -4,7 +4,13 @@
 #include "utils/stringutils.h"
 #include "utils/SHA256.h"
 
-#include <unistd.h>
+#ifdef _WIN32
+#include <direct.h>
+#define getcwd _getcwd
+#define chdir _chdir
+#else
+#include "unistd.h"
+#endif
 #include <fstream>
 #include <iostream>
 

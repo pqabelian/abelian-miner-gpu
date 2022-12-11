@@ -403,8 +403,9 @@ __kernel void search(
     if (get_local_id(0) == 0)
         atomic_inc(&g_output->hashCount);
 #endif
-
-    if (as_ulong(as_uchar8(state[0]).s76543210) <= target) {
+    // In AbelEthash, the seal hash is byte-reversed and then compared with the target, thus here use state[3] directly
+    //if (as_ulong(as_uchar8(state[0]).s76543210) <= target) {
+    if (as_ulong(as_uchar8(state[3])) <= target) {
 #ifdef FAST_EXIT
         atomic_inc(&g_output->abort);
 #endif

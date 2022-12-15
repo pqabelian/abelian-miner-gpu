@@ -63,29 +63,40 @@ void AbelStratumClient::init_socket()
                 make_verbose_verification(boost::asio::ssl::rfc2818_verification(m_conn->Host())));
         }
 #ifdef _WIN32
-        HCERTSTORE hStore = CertOpenSystemStore(0, "ROOT");
-        if (hStore == nullptr)
+//        HCERTSTORE hStore = CertOpenSystemStore(0, "ROOT");
+//        if (hStore == nullptr)
+//        {
+//            return;
+//        }
+//
+//        X509_STORE* store = X509_STORE_new();
+//        PCCERT_CONTEXT pContext = nullptr;
+//        while ((pContext = CertEnumCertificatesInStore(hStore, pContext)) != nullptr)
+//        {
+//            X509* x509 = d2i_X509(
+//                nullptr, (const unsigned char**)&pContext->pbCertEncoded, pContext->cbCertEncoded);
+//            if (x509 != nullptr)
+//            {
+//                X509_STORE_add_cert(store, x509);
+//                X509_free(x509);
+//            }
+//        }
+//
+//        CertFreeCertificateContext(pContext);
+//        CertCloseStore(hStore, 0);
+//
+//        SSL_CTX_set_cert_store(ctx.native_handle(), store);
+        string certPath = "./poolcerts/" + m_conn->Host() + ".cert";
+        try
         {
-            return;
+            ctx.load_verify_file(certPath);
+            cnote << "Pool cert " << certPath << " is loaded successfully.";
+        }
+        catch (...)
+        {
+            cwarn << "Failed to load pool cert " << certPath;
         }
 
-        X509_STORE* store = X509_STORE_new();
-        PCCERT_CONTEXT pContext = nullptr;
-        while ((pContext = CertEnumCertificatesInStore(hStore, pContext)) != nullptr)
-        {
-            X509* x509 = d2i_X509(
-                nullptr, (const unsigned char**)&pContext->pbCertEncoded, pContext->cbCertEncoded);
-            if (x509 != nullptr)
-            {
-                X509_STORE_add_cert(store, x509);
-                X509_free(x509);
-            }
-        }
-
-        CertFreeCertificateContext(pContext);
-        CertCloseStore(hStore, 0);
-
-        SSL_CTX_set_cert_store(ctx.native_handle(), store);
 #else
 //        char* certPath = getenv("SSL_CERT_FILE");
 //        try

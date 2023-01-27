@@ -325,7 +325,7 @@ __kernel void search(
     uint2 mixhash[4];
 
     for (int pass = 0; pass < 2; ++pass) {
-        KECCAK_PROCESS(state, select(5, 12, pass != 0), select(8, 1, pass != 0));
+        KECCAK_PROCESS(state, select(5, 12, pass != 0), select(8, 4, pass != 0));
         if (pass > 0)
             break;
 

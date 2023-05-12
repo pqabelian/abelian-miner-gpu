@@ -11,7 +11,6 @@
 #include <json/json.h>
 
 #include "../PoolClient.h"
-#include "base64.h"
 
 using namespace std;
 using namespace dev;
@@ -20,7 +19,6 @@ using namespace eth;
 class AbelGetworkClient : public PoolClient
 {
 public:
-    AbelGetworkClient(int worktimeout, unsigned farmRecheckPeriod,string username,string password);
     AbelGetworkClient(int worktimeout, unsigned farmRecheckPeriod);
     ~AbelGetworkClient();
 
@@ -71,6 +69,4 @@ private:
     std::chrono::time_point<std::chrono::steady_clock> m_current_tstamp;
 
     unsigned m_solution_submitted_max_id;  // maximum json id we used to send a solution
-
-    string m_username,m_password;
 };

@@ -10,22 +10,6 @@ using namespace eth;
 
 using boost::asio::ip::tcp;
 
-AbelGetworkClient::AbelGetworkClient(int worktimeout, unsigned farmRecheckPeriod,string username,string password)
-  : PoolClient(),
-    m_farmRecheckPeriod(farmRecheckPeriod),
-    m_io_strand(g_io_service),
-    m_socket(g_io_service),
-    m_txQueue(64),
-    m_resolver(g_io_service),
-    m_endpoints(),
-    m_getwork_timer(g_io_service),
-    m_worktimeout(worktimeout),
-    m_username(username),
-    m_password(password)
-{
-    m_jSwBuilder.settings_["indentation"] = "";
-}
-
 AbelGetworkClient::AbelGetworkClient(int worktimeout, unsigned farmRecheckPeriod)
   : PoolClient(),
     m_farmRecheckPeriod(farmRecheckPeriod),
@@ -185,12 +169,7 @@ void AbelGetworkClient::handle_connect(const boost::system::error_code& ec)
                     os << "Host: " << m_conn->Host() << "\r\n";
                     os << "Content-Type: application/json"
                        << "\r\n";
-                    string basicAuth;
-                    if (!Base64Encode(m_username+":"+m_password,&basicAuth)) {
-                        cwarn<<"Error for encoding basic authentication";
-                    }
-                    os << "Authorization: Basic "<< basicAuth << "\r\n";
-//                    os << "Authorization: Basic c2RoZmlzZGhhb2ZzaGRqODc3OmVmb3dmenhrc2RrbGpmdg==" << "\r\n";
+                    os << "Authorization: Basic c2RoZmlzZGhhb2ZzaGRqODc3OmVmb3dmenhrc2RrbGpmdg==" << "\r\n";
                     os << "Content-Length: " << line->length() << "\r\n";
                     os << "Connection: close\r\n\r\n";  // Double line feed to mark the
                                                         // beginning of body

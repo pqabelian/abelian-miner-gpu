@@ -425,9 +425,8 @@ void PoolManager::rotateConnect()
         if (m_Settings.connections.at(m_activeConnectionIdx)->Family() == ProtocolFamily::GETWORK)
 //            p_client =
 //                std::unique_ptr<PoolClient>(new EthGetworkClient(m_Settings.noWorkTimeout, m_Settings.getWorkPollInterval));
-//  TODO: now just support one pool or all pool use the same authentication
         p_client =
-            std::unique_ptr<PoolClient>(new AbelGetworkClient(m_Settings.noWorkTimeout, m_Settings.getWorkPollInterval,m_Settings.connections[0]->User(),m_Settings.connections[0]->Pass()));
+            std::unique_ptr<PoolClient>(new AbelGetworkClient(m_Settings.noWorkTimeout, m_Settings.getWorkPollInterval));
         if (m_Settings.connections.at(m_activeConnectionIdx)->Family() == ProtocolFamily::STRATUM)
 //            p_client = std::unique_ptr<PoolClient>(
 //                new EthStratumClient(m_Settings.noWorkTimeout, m_Settings.noResponseTimeout));

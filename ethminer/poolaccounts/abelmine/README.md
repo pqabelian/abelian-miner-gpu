@@ -41,3 +41,14 @@ For this, the user could use the register command or mine command as below, wher
 ``` shell
 ./abelminer -U -P stratums://username1:password1@poolhost1:27778 -P stratums://username2:password2@poolhost2:27778
 ```
+
+## Mine by Getwork 
+From v2.0.2, **abelminer** supports solo mining by **getwork**, which is supported by **abec-v0.11.9** and later versions.
+The mine command is as below:
+``` shell
+./abelminer -P http://abec-host:port
+```
+where **abec-host** needs to enable the **getwork** supporting option, and the port is the specified port for supporting **getwork** solo mining.
+We refer to the specification of **abec** for the configuration of supporting **getwork**.
+Please note that on **abelminer**'s side, the above **getwork**-mining command does not need user or password, 
+and it works only as an external miner of the connected **abec-host**.

@@ -388,7 +388,7 @@ void CUDAMiner::search(
             {
                 buffer.count = 0;
 
-                // Extract solution and pass to higer level
+                // Extract solution and pass to higher level
                 // using io_service as dispatcher
 
                 for (uint32_t i = 0; i < found_count; i++)

@@ -159,6 +159,14 @@ void PoolManager::setClientHandlers()
         if (!wp)
             return;
 
+        if ( wp.header == m_currentWp.header )
+        {
+            //  This is the last line to check repeated job.
+            //  Will remove the warning later.
+            cwarn << EthRed "Repeated job is received. Will continue mining on current job" EthReset << ".";
+            return ;
+        }
+
         //  todo: AbelianStratum: Why newEpoch is determined by _currentEpoch == -1 ?
         //  todo: _currentEpoch == -1 implies new epoch, _currentEpoch != -1, then it is determined by following rules.
         int _currentEpoch = m_currentWp.epoch;
@@ -174,11 +182,6 @@ void PoolManager::setClientHandlers()
         }
 
         bool newDiff = (wp.boundary != m_currentWp.boundary);
-
-        if (m_currentWp.header == wp.header)
-        {
-            cwarn << EthRed "Repeated job is received and handled" EthReset << "...";
-        }
 
         m_currentWp = wp;
 

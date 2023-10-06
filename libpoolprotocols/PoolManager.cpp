@@ -175,6 +175,11 @@ void PoolManager::setClientHandlers()
 
         bool newDiff = (wp.boundary != m_currentWp.boundary);
 
+        if (m_currentWp.header == wp.header)
+        {
+            cwarn << EthRed "Repeated job is received and handled" EthReset << "...";
+        }
+
         m_currentWp = wp;
 
         if (newEpoch)

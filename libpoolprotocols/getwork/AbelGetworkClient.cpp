@@ -411,7 +411,7 @@ void AbelGetworkClient::processResponse(Json::Value& JRes)
     _isSuccess = JRes.get("error", Json::Value::null).empty();
     _errReason = (_isSuccess ? "" : processError(JRes));
 
-    // We have only theese possible ids
+    // We have only these possible ids
     // 1 as response for getwork
     // 9 as response for submithashrate
     // 40+ for responses to mining submissions
@@ -459,8 +459,12 @@ void AbelGetworkClient::processResponse(Json::Value& JRes)
 //                newWp.boundary = h256(JPrm.get(Json::Value::ArrayIndex(2), "").asString());
 //                newWp.job = newWp.header.hex();
                 //if (m_current.header != newWp.header)
-                if ( m_current.job.compare(newWp.job) != 0 )
+                if ( (! m_current) || m_current.job.compare(newWp.job) != 0 )
                 {
+                    if ( m_current && m_current.header == newWp.header ) {
+                        cwarn << "Different Jobs are sharing the same header/content-hash.";
+                    }
+
                     m_current = newWp;
                     m_current_tstamp = std::chrono::steady_clock::now();
 

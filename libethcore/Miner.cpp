@@ -42,10 +42,9 @@ void Miner::setWork(WorkPackage const& _work)
         // Void work if this miner is paused
         if (paused())
             m_work.header = h256();
-//        else
-//            m_work = _work;
-        else if ( (! m_work) || m_work.header != _work.header || m_work.boundary != _work.boundary )
+        else
             m_work = _work;
+
 
 #ifdef DEV_BUILD
         m_workSwitchStart = std::chrono::steady_clock::now();

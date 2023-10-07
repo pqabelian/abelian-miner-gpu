@@ -176,11 +176,18 @@ void PoolManager::setClientHandlers()
 
         bool newDiff = (wp.boundary != m_currentWp.boundary);
 
-        if ( (wp.header == m_currentWp.header) && (!newDiff) && (!newEpoch) )
+        if (wp.header == m_currentWp.header)
         {
             //  This is to check repeated job.
-            //  Will remove the warning later.
-            cwarn << "Repeated job is received. Will continue mining on current job.";
+            //  todo: remove the warning later.
+            if ( newDiff )
+            {
+                cwarn << "Received Job: Repeated Header, New Difficulty.";
+            }
+            else
+            {
+                cwarn << "Received Job: Repeated Header, Same Difficulty.";
+            }
         }
 
         m_currentWp = wp;

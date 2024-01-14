@@ -7,4 +7,4 @@
 	branch = master
 [submodule "thirdparty/abelethash"]
 	path = thirdparty/abelethash
-	url = git@github.com:pqabelian/abelian-lib-abelethash.git
+	url = https://github.com/pqabelian/abelian-lib-abelethash
